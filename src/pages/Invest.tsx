@@ -7,15 +7,58 @@ import { Button, Card, Field, inputClass } from '../components/ui';
 
 const rdMoney = (value: number) => `RD$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)}`;
 const dailyRoi = (dailyEarnings: number, investmentAmount: number) => ((dailyEarnings / investmentAmount) * 100).toFixed(2);
-const planCameraImages: Record<string, string> = {
-  'plan-renkar-a': '/images/camera-plan-700.png',
-  'plan-renkar-b': '/images/camera-plan-3500.png',
-  'plan-renkar-c': '/images/camera-plan-5500.png',
-  'plan-renkar-d': '/images/camera-plan-8700.png',
-  'plan-renkar-e': '/images/camera-plan-25500.png',
-  'plan-renkar-f': '/images/camera-plan-47000.png',
-  'plan-renkar-g': '/images/camera-plan-68000.png'
+const planAccentStyles: Record<string, { card: string; label: string; metric: string; roi: string; duration: string }> = {
+  'plan-renkar-a': {
+    card: 'border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white',
+    label: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+    metric: 'bg-emerald-50 text-emerald-700',
+    roi: 'bg-emerald-100 text-emerald-800',
+    duration: 'bg-emerald-50 text-emerald-700'
+  },
+  'plan-renkar-b': {
+    card: 'border-sky-100 bg-gradient-to-br from-sky-50/80 to-white',
+    label: 'border-sky-100 bg-sky-50 text-sky-700',
+    metric: 'bg-sky-50 text-sky-700',
+    roi: 'bg-sky-100 text-sky-800',
+    duration: 'bg-sky-50 text-sky-700'
+  },
+  'plan-renkar-c': {
+    card: 'border-violet-100 bg-gradient-to-br from-violet-50/80 to-white',
+    label: 'border-violet-100 bg-violet-50 text-violet-700',
+    metric: 'bg-violet-50 text-violet-700',
+    roi: 'bg-violet-100 text-violet-800',
+    duration: 'bg-violet-50 text-violet-700'
+  },
+  'plan-renkar-d': {
+    card: 'border-amber-100 bg-gradient-to-br from-amber-50/80 to-white',
+    label: 'border-amber-100 bg-amber-50 text-amber-700',
+    metric: 'bg-amber-50 text-amber-700',
+    roi: 'bg-amber-100 text-amber-800',
+    duration: 'bg-amber-50 text-amber-700'
+  },
+  'plan-renkar-e': {
+    card: 'border-teal-100 bg-gradient-to-br from-teal-50/80 to-white',
+    label: 'border-teal-100 bg-teal-50 text-teal-700',
+    metric: 'bg-teal-50 text-teal-700',
+    roi: 'bg-teal-100 text-teal-800',
+    duration: 'bg-teal-50 text-teal-700'
+  },
+  'plan-renkar-f': {
+    card: 'border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white',
+    label: 'border-indigo-100 bg-indigo-50 text-indigo-700',
+    metric: 'bg-indigo-50 text-indigo-700',
+    roi: 'bg-indigo-100 text-indigo-800',
+    duration: 'bg-indigo-50 text-indigo-700'
+  },
+  'plan-renkar-g': {
+    card: 'border-rose-100 bg-gradient-to-br from-rose-50/80 to-white',
+    label: 'border-rose-100 bg-rose-50 text-rose-700',
+    metric: 'bg-rose-50 text-rose-700',
+    roi: 'bg-rose-100 text-rose-800',
+    duration: 'bg-rose-50 text-rose-700'
+  }
 };
+const defaultPlanAccent = planAccentStyles['plan-renkar-a'];
 
 export function Invest() {
   const { state, createRecharge } = useApp();
@@ -107,32 +150,30 @@ export function Invest() {
         {availablePlans.map((plan) => {
           const isSelected = selected.id === plan.id;
           const roi = dailyRoi(plan.dailyProfit, plan.amount);
-          const cameraImage = planCameraImages[plan.id] || '/images/security-camera-plan.png';
+          const accent = planAccentStyles[plan.id] || defaultPlanAccent;
           return (
-          <Card key={plan.id} className={`transition hover:-translate-y-0.5 ${isSelected ? 'premium-ring border-emerald-200 shadow-glow' : ''}`}>
+          <Card key={plan.id} className={`${accent.card} transition hover:-translate-y-0.5 ${isSelected ? 'premium-ring shadow-glow' : ''}`}>
             <div className="grid grid-cols-[1fr_6.75rem] items-center gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-black text-emerald-700">{plan.name}</p>
                 <h2 className="text-3xl font-black text-slate-950">{rdMoney(plan.amount)}</h2>
                 <div className={`mt-3 flex flex-wrap items-center gap-2 ${isSelected ? 'plan-selected-fade' : ''}`}>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-black text-emerald-700">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-black ${accent.metric}`}>
                     <CirclePlus className="h-4 w-4" />
                     +{rdMoney(plan.dailyProfit)}/dia
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-800">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black ${accent.roi}`}>
                     <TrendingUp className="h-3.5 w-3.5" />
                     ROI {roi}%
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600">
+                  <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-black ${accent.duration}`}>
                     {plan.durationDays} dias
                   </span>
                 </div>
               </div>
               <div className="flex flex-col items-stretch gap-2">
-                <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 shadow-sm">
-                  <img src={cameraImage} alt={`Camara de seguridad del plan ${rdMoney(plan.amount)}`} className="h-full w-full object-cover" />
-                  <span className="absolute bottom-1 left-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-black text-emerald-800 shadow-sm">
-                    1 camara
+                <div className={`grid min-h-20 place-items-center rounded-2xl border px-3 text-center shadow-sm ${accent.label}`}>
+                  <span className="text-sm font-black uppercase tracking-wide">
+                    {plan.name}
                   </span>
                 </div>
                 <Button className="w-full px-3 py-3 text-xs" onClick={() => selectPlan(plan)}>Comprar</Button>

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Cctv, LockKeyhole, Phone, ShieldCheck } from 'lucide-react';
+import { Cctv, Eye, EyeOff, LockKeyhole, Phone, ShieldCheck } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
 import { Button, Card, Field, inputClass } from './ui';
 
@@ -8,6 +8,7 @@ export function Auth() {
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('code') || '';
   const [mode, setMode] = useState<'login' | 'register'>(referralCodeFromUrl ? 'register' : 'login');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +68,15 @@ export function Auth() {
           <Field label="Clave">
             <div className="relative">
               <LockKeyhole className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
-              <input className={`${inputClass} pl-11`} name="password" type="password" required placeholder="123456" />
+              <input className={`${inputClass} pl-11 pr-12`} name="password" type={showPassword ? 'text' : 'password'} required placeholder="123456" />
+              <button
+                type="button"
+                aria-label={showPassword ? 'Ocultar clave' : 'Ver clave'}
+                className="absolute right-4 top-3 grid h-6 w-6 place-items-center rounded-full text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-700"
+                onClick={() => setShowPassword((value) => !value)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </Field>
           {mode === 'register' && (

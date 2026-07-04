@@ -1135,7 +1135,13 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
   }
   const requestedAmount = Number(req.body.amount);
   const availableBalance = availableBalanceForUser(state, currentUserId);
-  if (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || requestedAmount > availableBalance) {
+  const minimumWithdrawalAmount = 200;
+  if (!Number.isFinite(requestedAmount) || requestedAmount < minimumWithdrawalAmount) {
+    return res.status(400).json({
+      message: `El monto minimo de retiro es ${formatMoney(minimumWithdrawalAmount)}.`
+    });
+  }
+  if (requestedAmount > availableBalance) {
     return res.status(400).json({
       message: `Monto invalido. Tu saldo disponible para retirar es ${formatMoney(availableBalance)}.`
     });

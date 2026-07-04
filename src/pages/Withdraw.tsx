@@ -16,7 +16,8 @@ export function Withdraw() {
   const hasWithdrawalToday = withdrawals.some((item) => isSameDominicanDate(item.createdAt, new Date()));
   const balance = availableBalance(investments, withdrawals, referrals, movements);
   const withdrawScheduleOpen = isWithdrawalScheduleOpen();
-  const canSubmit = balance > 0 && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday;
+  const minimumWithdrawalAmount = 200;
+  const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,7 +46,8 @@ export function Withdraw() {
         <Stat label="Horario" value="10 AM - 5 PM" accent="text-amber-700" />
       </div>
       <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-        Para retirar es obligatorio tener al menos una recarga aprobada por administracion. Los bonos, comisiones o referidos no habilitan retiros por si solos.
+        Para retirar es obligatorio tener al menos una recarga aprobada por administracion. El monto minimo de retiro es RD$200.
+        Los bonos, comisiones o referidos no habilitan retiros por si solos.
       </p>
       {!hasApprovedRecharge && (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
@@ -79,7 +81,7 @@ export function Withdraw() {
           <Field label="Tipo de cuenta">
             <select className={inputClass} name="accountType" required><option>Ahorro</option><option>Corriente</option></select>
           </Field>
-          <Field label="Monto a retirar"><input className={inputClass} name="amount" required type="number" min="1" max={Math.max(1, balance)} /></Field>
+          <Field label="Monto a retirar"><input className={inputClass} name="amount" required type="number" min={minimumWithdrawalAmount} max={Math.max(minimumWithdrawalAmount, balance)} /></Field>
           <Button disabled={!canSubmit} className="w-full">Solicitar retiro</Button>
         </form>
         {sent && <p className="mt-3 text-sm font-semibold text-emerald-700">Solicitud creada con estado Pendiente.</p>}
