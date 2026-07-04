@@ -46,9 +46,9 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
         <Badge tone="ok">Cuenta verificada</Badge>
       </div>
 
-      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-sky-500 via-blue-700 to-violet-800 p-5 text-white shadow-2xl shadow-blue-500/20">
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/25 blur-3xl" />
-        <div className="absolute -bottom-16 left-6 h-36 w-36 rounded-full bg-emerald-300/35 blur-3xl" />
+      <Card className="green-hero-card relative overflow-hidden p-5 text-white">
+        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-16 left-6 h-36 w-36 rounded-full bg-emerald-200/20 blur-3xl" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20 text-white shadow-sm backdrop-blur">
@@ -59,18 +59,18 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
               <p className="text-xs text-white/75">Actualizado con datos internos</p>
             </div>
           </div>
-          <ShieldCheck className="h-6 w-6 text-emerald-200" />
+          <ShieldCheck className="h-6 w-6 text-white" />
         </div>
 
         <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-white">{money(balance)}</h2>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Ganancia hoy</p>
-            <p className="mt-1 text-xl font-black text-emerald-100">{money(dailyProfitTotal(investments))}</p>
+            <p className="mt-1 text-xl font-black text-white">{money(dailyProfitTotal(investments))}</p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Horario retiros</p>
-            <p className="mt-1 text-sm font-black text-amber-100">10 AM - 5 PM</p>
+            <p className="mt-1 text-sm font-black text-white">10 AM - 5 PM</p>
           </div>
         </div>
       </Card>

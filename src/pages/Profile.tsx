@@ -88,9 +88,9 @@ export function Profile() {
 
   return (
     <div className="space-y-4">
-      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-fuchsia-500 via-violet-700 to-blue-800 p-5 text-center text-white shadow-2xl shadow-violet-500/20">
-        <div className="absolute -left-12 -top-16 h-40 w-40 rounded-full bg-white/25 blur-3xl" />
-        <div className="absolute -bottom-16 right-4 h-36 w-36 rounded-full bg-emerald-300/35 blur-3xl" />
+      <Card className="green-profile-card relative overflow-hidden p-5 text-center text-white">
+        <div className="absolute -left-12 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -bottom-16 right-4 h-36 w-36 rounded-full bg-emerald-200/20 blur-3xl" />
         <div className="relative">
           <div className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-[2rem] border border-white/30 bg-white/20 text-2xl font-black text-white shadow-sm backdrop-blur">
             {currentUser?.name.slice(0, 1)}
