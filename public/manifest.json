@@ -1,0 +1,16 @@
+{
+  "name": "RENKAR",
+  "short_name": "RENKAR",
+  "description": "Web app demo de inversiones con validacion manual.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

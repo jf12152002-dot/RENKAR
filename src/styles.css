@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-family: Manrope, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6faf7;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 16% -10%, rgba(22, 163, 74, .13), transparent 24rem),
+    radial-gradient(circle at 94% 8%, rgba(198, 146, 20, .1), transparent 20rem),
+    linear-gradient(180deg, #ffffff 0%, #f6faf7 48%, #eef7f0 100%);
+  color: #0f172a;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(15, 23, 42, .035) 1px, transparent 1px);
+  background-size: 100% 34px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 62%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input, select, button, textarea {
+  font: inherit;
+}
+
+h1, h2, h3, p {
+  letter-spacing: -0.01em;
+}
+
+.glass {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid rgba(15, 23, 42, .08);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .08), inset 0 1px 0 rgba(255,255,255,.8);
+  backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(22,163,74,.06), transparent 34%, transparent 72%, rgba(198,146,20,.045));
+}
+
+.glass > :not(.absolute) {
+  position: relative;
+  z-index: 1;
+}
+
+.premium-ring {
+  box-shadow: 0 0 0 1px rgba(22,163,74,.14), 0 18px 44px rgba(22,163,74,.12);
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.plan-selected-fade {
+  animation: planSelectedFade .28s ease-out both;
+}
+
+@keyframes planSelectedFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
