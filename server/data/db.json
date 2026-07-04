@@ -149,6 +149,17 @@
       "joinedAt": "2026-07-03T01:37:56.301Z",
       "referralCode": "ADRIA422",
       "bankMethods": []
+    },
+    {
+      "id": "user-1f999fc9-b58c-4dd4-aa89-99d80e81a30c",
+      "name": "Adrian",
+      "email": "8096274370",
+      "password": "scrypt:4c2cb0042b38f86871a09b0ca6a425a9:f4b8950ebb6e28a8874325dffd1cc8b9805b79b6e9cd9c764d58ff40dfaab5017329497ee5b8ec97b76fbe28ca719241c000b2b3d1ecdc7f89ae734b7a939273",
+      "role": "user",
+      "joinedAt": "2026-07-04T06:19:44.859Z",
+      "referralCode": "ADRIA969",
+      "bankMethods": [],
+      "blocked": false
     }
   ],
   "paymentAccounts": [
@@ -518,6 +529,14 @@
     }
   ],
   "movements": [
+    {
+      "id": "mov-27dd87f7-6f20-47b9-9a89-0a9b130dfe14",
+      "userId": "user-1f999fc9-b58c-4dd4-aa89-99d80e81a30c",
+      "type": "Bono de registro",
+      "amount": 200,
+      "status": "Acreditado",
+      "createdAt": "2026-07-04T06:19:44.860Z"
+    },
     {
       "id": "mov-f459761d-e9dd-4962-934f-941830427857",
       "userId": "user-8e3ddd7a-301f-453c-bd00-7e1547f7fdfa",

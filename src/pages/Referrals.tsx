@@ -12,7 +12,8 @@ export function Referrals() {
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
   const active = referrals.filter((item) => item.status === 'Activo').length;
-  const link = `https://renkar.app/r/${currentUser?.referralCode}`;
+  const link = `https://renkarapp.com/register?code=${currentUser?.referralCode}`;
+  const shareMessage = `Unete a RENKAR con mi codigo ${currentUser?.referralCode} y empieza a invertir desde RD$ 600. ${link}`;
   const progress = active % 5;
   const blockBonus = referralBonus(referrals);
   const lineBonus = creditedReferralLineBonus(movements);
@@ -38,8 +39,8 @@ export function Referrals() {
         <div className="mt-2 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{link}</div>
         <div className="mt-3 grid grid-cols-4 gap-2">
           <Button onClick={copy} className="col-span-2"><Copy className="mr-2 inline h-4 w-4" />{copied ? 'Copiado' : 'Copiar'}</Button>
-          <a className="rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-sm" href={`https://wa.me/?text=${encodeURIComponent(link)}`} target="_blank"><Share2 className="mx-auto h-5 w-5 text-emerald-700" /></a>
-          <a className="rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-sm" href={`https://t.me/share/url?url=${encodeURIComponent(link)}`} target="_blank"><Send className="mx-auto h-5 w-5 text-sky-600" /></a>
+          <a className="rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-sm" href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} target="_blank"><Share2 className="mx-auto h-5 w-5 text-emerald-700" /></a>
+          <a className="rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-sm" href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareMessage)}`} target="_blank"><Send className="mx-auto h-5 w-5 text-sky-600" /></a>
         </div>
         <button onClick={copyCode} className="mt-2 flex w-full items-center justify-center rounded-2xl border border-slate-100 bg-white p-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-emerald-50">
           <Ticket className="mr-2 h-4 w-4 text-emerald-700" />

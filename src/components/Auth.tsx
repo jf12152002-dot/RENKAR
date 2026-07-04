@@ -5,7 +5,8 @@ import { Button, Card, Field, inputClass } from './ui';
 
 export function Auth() {
   const { login, register } = useApp();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const referralCodeFromUrl = new URLSearchParams(window.location.search).get('code') || '';
+  const [mode, setMode] = useState<'login' | 'register'>(referralCodeFromUrl ? 'register' : 'login');
   const [error, setError] = useState('');
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -71,7 +72,7 @@ export function Auth() {
           </Field>
           {mode === 'register' && (
             <Field label="Codigo de referido opcional">
-              <input className={inputClass} name="referral" placeholder="MARIA350" />
+              <input className={inputClass} name="referral" placeholder="MARIA350" defaultValue={referralCodeFromUrl} />
             </Field>
           )}
           {error && (
