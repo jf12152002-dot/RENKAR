@@ -87,6 +87,19 @@ h1, h2, h3, p {
     radial-gradient(circle at 92% 92%, rgba(134,239,172,.24), transparent 10rem);
 }
 
+.blue-balance-card {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3730a3 48%, #0f766e 100%);
+  border: 0;
+  box-shadow: 0 24px 54px rgba(37, 99, 235, .28), inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.blue-balance-card::before {
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255,255,255,.25), transparent 9rem),
+    radial-gradient(circle at 90% 12%, rgba(125,211,252,.25), transparent 10rem),
+    linear-gradient(115deg, rgba(255,255,255,.08), transparent 44%, rgba(45,212,191,.16));
+}
+
 .premium-ring {
   box-shadow: 0 0 0 1px rgba(22,163,74,.14), 0 18px 44px rgba(22,163,74,.12);
 }
