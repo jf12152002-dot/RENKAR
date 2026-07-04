@@ -13,7 +13,6 @@ interface AppContextValue {
   logout: () => void;
   resetDemo: () => Promise<void>;
   createRecharge: (payload: {
-    planId: string;
     bankName: string;
     referenceNumber: string;
     amount: number;
@@ -21,6 +20,7 @@ interface AppContextValue {
     receiptName: string;
     receiptDataUrl?: string;
   }) => Promise<void>;
+  purchasePlan: (planId: string) => Promise<void>;
   createWithdrawal: (payload: {
     bank: string;
     accountHolder: string;
@@ -116,6 +116,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     async createRecharge(payload) {
       await run(() => api.createRecharge(payload));
+    },
+    async purchasePlan(planId) {
+      await run(() => api.purchasePlan(planId));
     },
     async createWithdrawal(payload) {
       await run(() => api.createWithdrawal(payload));

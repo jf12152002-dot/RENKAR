@@ -38,7 +38,8 @@ function Shell() {
 
   const pages: Record<Tab, ReactNode> = {
     dashboard: <Dashboard setTab={setTab} />,
-    invest: <Invest />,
+    invest: <Invest mode="plans" />,
+    recharge: <Invest mode="recharge" />,
     withdraw: <Withdraw />,
     referrals: <Referrals />,
     history: <History />,

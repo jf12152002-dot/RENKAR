@@ -35,7 +35,7 @@ create table if not exists payment_accounts (
 create table if not exists recharges (
   id text primary key,
   user_id text not null references users(id) on delete cascade,
-  plan_id text not null references plans(id) on delete restrict,
+  plan_id text references plans(id) on delete restrict,
   bank_name text not null,
   reference_number text,
   amount numeric not null check (amount > 0),
@@ -55,7 +55,7 @@ create table if not exists investments (
   duration_days integer not null check (duration_days > 0),
   started_at timestamptz not null default now(),
   active boolean not null default true,
-  recharge_id text not null unique references recharges(id) on delete restrict
+  recharge_id text unique references recharges(id) on delete restrict
 );
 
 create table if not exists withdrawals (

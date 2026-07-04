@@ -165,7 +165,7 @@ async function ensureDb() {
       create table if not exists recharges (
         id text primary key,
         user_id text not null references users(id) on delete cascade,
-        plan_id text not null,
+        plan_id text,
         bank_name text not null,
         reference_number text,
         amount numeric not null,
@@ -184,7 +184,7 @@ async function ensureDb() {
         duration_days integer not null,
         started_at timestamptz not null,
         active boolean not null default true,
-        recharge_id text not null
+        recharge_id text
       );
       create table if not exists withdrawals (
         id text primary key,
@@ -252,6 +252,10 @@ async function ensureDb() {
       create index if not exists idx_referrals_user on referrals(user_id);
       create index if not exists idx_gift_codes_code on gift_codes(code);
       create index if not exists idx_support_user_created on support_messages(user_id, created_at desc);
+    `);
+    await pool.query(`
+      alter table recharges alter column plan_id drop not null;
+      alter table investments alter column recharge_id drop not null;
     `);
     const count = await pool.query('select count(*)::int as count from users');
     if (count.rows[0].count === 0) await persistStateToPostgres(seedState);
@@ -349,7 +353,7 @@ async function loadStateFromPostgres() {
     recharges: recharges.rows.map((row) => ({
       id: row.id,
       userId: row.user_id,
-      planId: row.plan_id,
+      planId: row.plan_id || undefined,
       bankName: row.bank_name,
       referenceNumber: row.reference_number || '',
       amount: Number(row.amount),
@@ -368,7 +372,7 @@ async function loadStateFromPostgres() {
       durationDays: Number(row.duration_days),
       startedAt: row.started_at.toISOString(),
       active: row.active,
-      rechargeId: row.recharge_id
+      rechargeId: row.recharge_id || undefined
     })),
     withdrawals: withdrawals.rows.map((row) => ({
       id: row.id,
@@ -458,14 +462,14 @@ async function persistStateToPostgres(state) {
       await client.query(
         `insert into recharges (id, user_id, plan_id, bank_name, reference_number, amount, transfer_date, receipt_name, receipt_data_url, status, created_at)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-        [recharge.id, recharge.userId, recharge.planId, recharge.bankName, recharge.referenceNumber, recharge.amount, recharge.transferDate, recharge.receiptName, recharge.receiptDataUrl || null, recharge.status, recharge.createdAt]
+        [recharge.id, recharge.userId, recharge.planId || null, recharge.bankName, recharge.referenceNumber, recharge.amount, recharge.transferDate, recharge.receiptName, recharge.receiptDataUrl || null, recharge.status, recharge.createdAt]
       );
     }
     for (const investment of state.investments || []) {
       await client.query(
         `insert into investments (id, user_id, plan_id, amount, daily_profit, duration_days, started_at, active, recharge_id)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [investment.id, investment.userId, investment.planId, investment.amount, investment.dailyProfit, investment.durationDays, investment.startedAt, Boolean(investment.active), investment.rechargeId]
+        [investment.id, investment.userId, investment.planId, investment.amount, investment.dailyProfit, investment.durationDays, investment.startedAt, Boolean(investment.active), investment.rechargeId || null]
       );
     }
     for (const withdrawal of state.withdrawals || []) {
@@ -786,13 +790,19 @@ function availableBalanceForUser(state, userId) {
   const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
   const activeReferrals = referrals.filter((item) => item.status === 'Activo').length;
   const referralBonus = Math.floor(activeReferrals / 5) * 100;
+  const approvedDeposits = movements
+    .filter((item) => item.type === 'Deposito' && item.status === 'Aprobada')
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  const planPurchases = movements
+    .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
+    .reduce((sum, item) => sum + Number(item.amount), 0);
   const creditedBonuses = movements
     .filter((item) => ['Bono de registro', 'Bono de regalo', 'Bono por referidos'].includes(item.type) && item.status === 'Acreditado')
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  return accrued + referralBonus + creditedBonuses - paidOrPendingWithdrawals;
+  return approvedDeposits + accrued + referralBonus + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
 }
 
 async function logAdminAction(state, adminUserId, action, entityType, entityId, metadata = {}) {
@@ -1068,9 +1078,11 @@ app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPre
     const state = await readDb();
     const user = requireActiveUser(state, currentUserId, res);
     if (!user) return;
-    if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para invertir es de 9:00 AM a 7:00 PM.')) return;
-    const plan = state.plans.find((item) => item.id === req.body.planId);
-    if (!plan) return res.status(400).json({ message: 'Selecciona un plan de inversion valido.' });
+    if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para recargas es de 9:00 AM a 7:00 PM.')) return;
+    const requestedAmount = Number(req.body.amount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      return res.status(400).json({ message: 'Ingresa un monto de recarga valido.' });
+    }
     const paymentAccount = activePaymentAccountByNumber(state, req.body.referenceNumber);
     if (!paymentAccount) return res.status(400).json({ message: 'Selecciona una cuenta bancaria activa de RENKAR.' });
     if (!req.body.receiptDataUrl) return res.status(400).json({ message: 'Debes subir el comprobante de pago.' });
@@ -1082,10 +1094,10 @@ app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPre
     const recharge = {
       id: uid('rec'),
       userId: currentUserId,
-      planId: plan.id,
+      planId: null,
       bankName: paymentAccount.bank,
       referenceNumber: paymentAccount.accountNumber,
-      amount: Number(plan.amount),
+      amount: requestedAmount,
       transferDate: cleanText(req.body.transferDate, 20),
       receiptName: cleanText(req.body.receiptName || 'comprobante.jpg', 160),
       receiptDataUrl: req.body.receiptDataUrl,
@@ -1112,6 +1124,54 @@ app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPre
     console.error('Recharge creation error:', error);
     res.status(500).json({ message: 'No se pudo enviar la solicitud. Intenta de nuevo o contacta soporte.' });
   }
+});
+
+app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyPrefix: 'plan-purchases' }), async (req, res) => {
+  const currentUserId = clientId(req);
+  const state = await readDb();
+  const user = requireActiveUser(state, currentUserId, res);
+  if (!user) return;
+  if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para comprar planes es de 9:00 AM a 7:00 PM.')) return;
+  const plan = state.plans.find((item) => item.id === req.body.planId) || plans.find((item) => item.id === req.body.planId);
+  if (!plan) return res.status(400).json({ message: 'Selecciona un plan valido.' });
+  const availableBalance = availableBalanceForUser(state, currentUserId);
+  if (Number(plan.amount) > availableBalance) {
+    return res.status(400).json({
+      message: `Saldo insuficiente. Tu balance disponible es ${formatMoney(availableBalance)}.`
+    });
+  }
+  const investmentId = uid('inv');
+  const purchaseId = `purchase-${investmentId}`;
+  const now = new Date().toISOString();
+  state.investments.unshift({
+    id: investmentId,
+    userId: currentUserId,
+    planId: plan.id,
+    amount: Number(plan.amount),
+    dailyProfit: Number(plan.dailyProfit),
+    durationDays: Number(plan.durationDays),
+    startedAt: now,
+    active: true,
+    rechargeId: null
+  });
+  state.movements.unshift({
+    id: `mov-${purchaseId}`,
+    userId: currentUserId,
+    type: 'Compra de plan',
+    amount: -Number(plan.amount),
+    status: 'Activa',
+    createdAt: now
+  });
+  if (user.referredBy) {
+    const referral = state.referrals.find((item) => item.userId === user.referredBy && item.name === user.name);
+    if (referral) {
+      referral.status = 'Activo';
+      referral.investedAmount = Number(referral.investedAmount || 0) + Number(plan.amount);
+    }
+  }
+  createMultilevelReferralBonuses(state, user, plan, purchaseId);
+  const nextState = await writeDb(state, currentUserId);
+  res.json(clientState(nextState, currentUserId));
 });
 
 app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPrefix: 'withdrawals' }), async (req, res) => {
@@ -1211,37 +1271,12 @@ app.patch('/api/recharges/:id', async (req, res) => {
     return res.status(403).json({ message: 'No tienes permiso para gestionar recargas.' });
   }
   const recharge = state.recharges.find((item) => item.id === req.params.id);
-  const plan = state.plans.find((item) => item.id === recharge?.planId) || plans.find((item) => item.id === recharge?.planId);
   if (!recharge) return res.status(404).json({ message: 'Recarga no encontrada.' });
   const nextStatus = String(req.body.status || '');
   if (!['Pendiente de validacion', 'Aprobada', 'Rechazada'].includes(nextStatus)) {
     return res.status(400).json({ message: 'Estado de recarga invalido.' });
   }
   recharge.status = nextStatus;
-  if (nextStatus === 'Aprobada' && plan && !state.investments.some((item) => item.rechargeId === recharge.id)) {
-    state.investments.unshift({
-      id: uid('inv'),
-      userId: recharge.userId,
-      planId: plan.id,
-      amount: plan.amount,
-      dailyProfit: plan.dailyProfit,
-      durationDays: plan.durationDays,
-      startedAt: new Date().toISOString(),
-      active: true,
-      rechargeId: recharge.id
-    });
-    const activatedUser = state.users.find((user) => user.id === recharge.userId);
-    if (activatedUser?.referredBy) {
-      const referral = state.referrals.find((item) => item.userId === activatedUser.referredBy && item.name === activatedUser.name);
-      if (referral) {
-        referral.status = 'Activo';
-        referral.investedAmount = plan.amount;
-      }
-    }
-    if (activatedUser) {
-      createMultilevelReferralBonuses(state, activatedUser, plan, recharge.id);
-    }
-  }
   state.movements = state.movements.map((item) =>
     item.id === `mov-${recharge.id}` || (item.userId === recharge.userId && item.type === 'Deposito' && item.amount === Number(recharge.amount) && item.status === 'Pendiente de validacion')
       ? { ...item, status: nextStatus }

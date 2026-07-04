@@ -2,7 +2,7 @@ export type Role = 'user' | 'admin' | 'admin_recharges' | 'admin_withdrawals' | 
 export type RechargeStatus = 'Pendiente de validacion' | 'Aprobada' | 'Rechazada';
 export type WithdrawalStatus = 'Pendiente' | 'Aprobado' | 'Rechazado' | 'Pagado';
 export type ReferralStatus = 'Activo' | 'Pendiente';
-export type MovementType = 'Deposito' | 'Ganancia diaria' | 'Retiro' | 'Bono por referidos' | 'Bono de registro' | 'Bono de regalo';
+export type MovementType = 'Deposito' | 'Compra de plan' | 'Ganancia diaria' | 'Retiro' | 'Bono por referidos' | 'Bono de registro' | 'Bono de regalo';
 
 export interface User {
   id: string;
@@ -35,13 +35,13 @@ export interface Investment {
   durationDays: number;
   startedAt: string;
   active: boolean;
-  rechargeId: string;
+  rechargeId?: string;
 }
 
 export interface RechargeRequest {
   id: string;
   userId: string;
-  planId: string;
+  planId?: string;
   bankName: string;
   referenceNumber: string;
   amount: number;

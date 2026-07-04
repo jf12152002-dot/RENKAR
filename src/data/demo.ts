@@ -109,17 +109,15 @@ export const demoState: AppState = {
       dailyProfit: 315,
       durationDays: 30,
       startedAt: daysAgo(6),
-      active: true,
-      rechargeId: 'rec-1'
+      active: true
     }
   ],
   recharges: [
     {
       id: 'rec-1',
       userId: 'user-demo',
-      planId: 'plan-renkar-c',
       bankName: 'Banco Popular',
-      referenceNumber: 'BP-992830',
+      referenceNumber: '80000000002',
       amount: 3500,
       transferDate: daysAgo(6).slice(0, 10),
       receiptName: 'comprobante-demo.jpg',
@@ -129,9 +127,8 @@ export const demoState: AppState = {
     {
       id: 'rec-2',
       userId: 'user-demo',
-      planId: 'plan-renkar-a',
       bankName: 'Banreservas',
-      referenceNumber: 'BR-228190',
+      referenceNumber: '80000000003',
       amount: 600,
       transferDate: daysAgo(1).slice(0, 10),
       receiptName: 'recarga-pendiente.png',
@@ -171,7 +168,8 @@ export const demoState: AppState = {
   ],
   movements: [
     { id: 'mov-registration-demo', userId: 'user-demo', type: 'Bono de registro', amount: 200, status: 'Acreditado', createdAt: daysAgo(16) },
-    { id: 'mov-1', userId: 'user-demo', type: 'Deposito', amount: 1000, status: 'Aprobada', createdAt: daysAgo(6) },
+    { id: 'mov-1', userId: 'user-demo', type: 'Deposito', amount: 3500, status: 'Aprobada', createdAt: daysAgo(6) },
+    { id: 'mov-purchase-demo', userId: 'user-demo', type: 'Compra de plan', amount: -3500, status: 'Activa', createdAt: daysAgo(6) },
     { id: 'mov-2', userId: 'user-demo', type: 'Ganancia diaria', amount: 150, status: 'Acreditada', createdAt: daysAgo(1) },
     { id: 'mov-3', userId: 'user-demo', type: 'Retiro', amount: -300, status: 'Pagado', createdAt: daysAgo(4) },
     { id: 'mov-4', userId: 'user-demo', type: 'Bono por referidos', amount: 0, status: 'En progreso', createdAt: daysAgo(2) }

@@ -4,7 +4,7 @@ import { MovementType } from '../types';
 import { dateTime, money } from '../utils/format';
 import { Badge, Card } from '../components/ui';
 
-const filters: Array<MovementType | 'Todos'> = ['Todos', 'Deposito', 'Ganancia diaria', 'Retiro', 'Bono por referidos', 'Bono de registro', 'Bono de regalo'];
+const filters: Array<MovementType | 'Todos'> = ['Todos', 'Deposito', 'Compra de plan', 'Ganancia diaria', 'Retiro', 'Bono por referidos', 'Bono de registro', 'Bono de regalo'];
 
 export function History() {
   const { currentUser, state } = useApp();

@@ -62,6 +62,12 @@ export const api = {
       body: JSON.stringify({ ...payload, currentUserId: currentUserId() })
     });
   },
+  purchasePlan(planId: string) {
+    return request<AppState>('/api/investments/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ planId, currentUserId: currentUserId() })
+    });
+  },
   createWithdrawal(payload: Record<string, unknown>) {
     return request<AppState>('/api/withdrawals', {
       method: 'POST',

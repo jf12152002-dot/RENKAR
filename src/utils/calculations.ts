@@ -25,6 +25,24 @@ export function paidWithdrawals(withdrawals: WithdrawalRequest[]) {
   return withdrawals.filter((withdrawal) => withdrawal.status === 'Pagado').reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
 }
 
+export function reservedWithdrawals(withdrawals: WithdrawalRequest[]) {
+  return withdrawals
+    .filter((withdrawal) => ['Pendiente', 'Aprobado', 'Pagado'].includes(withdrawal.status))
+    .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+}
+
+export function approvedDeposits(movements: Movement[] = []) {
+  return movements
+    .filter((movement) => movement.type === 'Deposito' && movement.status === 'Aprobada')
+    .reduce((sum, movement) => sum + movement.amount, 0);
+}
+
+export function debitedPlanPurchases(movements: Movement[] = []) {
+  return movements
+    .filter((movement) => movement.type === 'Compra de plan' && !movement.status.includes('Rechaz'))
+    .reduce((sum, movement) => sum + movement.amount, 0);
+}
+
 export function creditedRegistrationBonus(movements: Movement[] = []) {
   return movements
     .filter((movement) => ['Bono de registro', 'Bono de regalo', 'Bono por referidos'].includes(movement.type) && movement.status === 'Acreditado')
@@ -38,7 +56,7 @@ export function creditedReferralLineBonus(movements: Movement[] = []) {
 }
 
 export function availableBalance(investments: Investment[], withdrawals: WithdrawalRequest[], referrals: Referral[], movements: Movement[] = []) {
-  return accruedProfit(investments) + referralBonus(referrals) + creditedRegistrationBonus(movements) - paidWithdrawals(withdrawals);
+  return approvedDeposits(movements) + accruedProfit(investments) + referralBonus(referrals) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
 }
 
 export function movementAmount(movement: Movement) {

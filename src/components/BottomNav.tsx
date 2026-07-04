@@ -2,13 +2,13 @@ import { BarChart3, Home, User, Users, WalletCards } from 'lucide-react';
 
 const items = [
   { id: 'dashboard', label: 'Inicio', icon: Home },
-  { id: 'invest', label: 'Comprar', icon: WalletCards },
+  { id: 'invest', label: 'Planes', icon: WalletCards },
   { id: 'withdraw', label: 'Retiros', icon: BarChart3 },
   { id: 'referrals', label: 'Referidos', icon: Users },
   { id: 'profile', label: 'Perfil', icon: User }
 ] as const;
 
-export type Tab = (typeof items)[number]['id'] | 'history' | 'admin';
+export type Tab = (typeof items)[number]['id'] | 'recharge' | 'history' | 'admin';
 
 export function BottomNav({ tab, setTab, isAdmin }: { tab: Tab; setTab: (tab: Tab) => void; isAdmin: boolean }) {
   const visible = isAdmin ? [...items, { id: 'admin' as const, label: 'Admin', icon: BarChart3 }] : items;

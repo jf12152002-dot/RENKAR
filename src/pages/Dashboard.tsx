@@ -30,7 +30,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
     .slice(0, 3);
 
   const shortcuts = [
-    { id: 'invest', label: 'Comprar', icon: WalletCards, color: 'from-sky-500 to-blue-700' },
+    { id: 'recharge', label: 'Recargas', icon: WalletCards, color: 'from-sky-500 to-blue-700' },
     { id: 'withdraw', label: 'Retirar', icon: ArrowDownToLine, color: 'from-emerald-500 to-green-700' },
     { id: 'referrals', label: 'Referidos', icon: UserRoundPlus, color: 'from-amber-400 to-orange-600' },
     { id: 'history', label: 'Historial', icon: History, color: 'from-fuchsia-500 to-violet-700' }
