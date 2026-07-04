@@ -2,7 +2,7 @@ import { BarChart3, Home, User, Users, WalletCards } from 'lucide-react';
 
 const items = [
   { id: 'dashboard', label: 'Inicio', icon: Home },
-  { id: 'invest', label: 'Invertir', icon: WalletCards },
+  { id: 'invest', label: 'Comprar', icon: WalletCards },
   { id: 'withdraw', label: 'Retiros', icon: BarChart3 },
   { id: 'referrals', label: 'Referidos', icon: Users },
   { id: 'profile', label: 'Perfil', icon: User }

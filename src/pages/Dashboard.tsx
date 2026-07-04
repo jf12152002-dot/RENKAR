@@ -29,7 +29,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
     .slice(0, 3);
 
   const shortcuts = [
-    { id: 'invest', label: 'Invertir', icon: WalletCards },
+    { id: 'invest', label: 'Comprar', icon: WalletCards },
     { id: 'withdraw', label: 'Retirar', icon: ArrowDownToLine },
     { id: 'referrals', label: 'Referidos', icon: UserRoundPlus },
     { id: 'history', label: 'Historial', icon: History }

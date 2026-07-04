@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CirclePlus, Clipboard, ShieldCheck, TrendingUp } from 'lucide-react';
 import { plans } from '../data/plans';
 import { useApp } from '../hooks/useApp';
@@ -24,6 +24,7 @@ export function Invest() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const rechargeFormRef = useRef<HTMLDivElement | null>(null);
   const activeAccounts = (state.paymentAccounts || []).filter((account) => account.active);
   const [selectedAccountId, setSelectedAccountId] = useState(activeAccounts[0]?.id || '');
   const selectedAccount = activeAccounts.find((account) => account.id === selectedAccountId) || activeAccounts[0];
@@ -40,6 +41,10 @@ export function Invest() {
     setSelected(plan);
     setAmount(plan.amount);
     setSent(false);
+    setError('');
+    window.setTimeout(() => {
+      rechargeFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -77,7 +82,7 @@ export function Invest() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-black">Invertir</h1>
+        <h1 className="text-2xl font-black">Comprar</h1>
         <p className="text-sm text-slate-400">Horario para invertir: 9:00 AM - 7:00 PM.</p>
       </div>
       <p className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
@@ -116,7 +121,7 @@ export function Invest() {
                     1 camara
                   </span>
                 </div>
-                <Button className="w-full px-3 py-3 text-xs" onClick={() => selectPlan(plan)}>{isSelected ? 'Comprado' : 'Comprar'}</Button>
+                <Button className="w-full px-3 py-3 text-xs" onClick={() => selectPlan(plan)}>Comprar</Button>
               </div>
             </div>
           </Card>
@@ -124,7 +129,8 @@ export function Invest() {
         })}
       </div>
 
-      <Card>
+      <Card className={sent ? 'premium-ring border-emerald-200' : ''}>
+        <div ref={rechargeFormRef} className="-mt-2 h-2" />
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheck className="text-gold" />
           <div>
@@ -188,10 +194,18 @@ export function Invest() {
           <Button className="w-full">Enviar para validacion</Button>
         </form>
         {error && <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">{error}</p>}
+        {sent && (
+          <div className="mt-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-center shadow-sm">
+            <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-700" />
+            <h3 className="mt-2 text-lg font-black text-emerald-800">Solicitud enviada</h3>
+            <p className="mt-1 text-sm font-semibold text-emerald-700">
+              Tu comprobante fue recibido y queda pendiente de validacion por administracion.
+            </p>
+          </div>
+        )}
         <p className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
           Tu inversion sera activada cuando el pago sea validado por administracion.
         </p>
-        {sent && <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Solicitud enviada.</p>}
       </Card>
     </div>
   );
