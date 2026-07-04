@@ -68,13 +68,13 @@ export function Referrals() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            ['Linea 1', '15%'],
-            ['Linea 2', '3%'],
-            ['Linea 3', '2%']
-          ].map(([label, percent]) => (
-            <div key={label} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
-              <p className="mt-1 text-xl font-black text-emerald-700">{percent}</p>
+            ['Linea 1', '15%', 'from-emerald-500 to-green-700'],
+            ['Linea 2', '3%', 'from-sky-500 to-blue-700'],
+            ['Linea 3', '2%', 'from-fuchsia-500 to-violet-700']
+          ].map(([label, percent, color]) => (
+            <div key={label} className={`rounded-2xl bg-gradient-to-br ${color} p-3 text-center text-white shadow-lg shadow-slate-300/50`}>
+              <p className="text-[11px] font-black uppercase tracking-wide text-white/75">{label}</p>
+              <p className="mt-1 text-xl font-black">{percent}</p>
             </div>
           ))}
         </div>

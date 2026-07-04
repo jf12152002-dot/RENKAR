@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { useApp } from '../hooks/useApp';
 import { availableBalance } from '../utils/calculations';
 import { dateOnly, money } from '../utils/format';
-import { Badge, Button, Card, Field, inputClass, Stat } from '../components/ui';
+import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 
 export function Withdraw() {
   const { currentUser, state, createWithdrawal } = useApp();
@@ -42,8 +42,8 @@ export function Withdraw() {
         <p className="text-sm text-slate-400">Retiros diarios de lunes a sabado, 10:00 AM - 5:00 PM. Comision de retiro 15%.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Saldo disponible" value={money(balance)} accent="text-emerald-700" />
-        <Stat label="Horario" value="10 AM - 5 PM" accent="text-amber-700" />
+        <WithdrawStat label="Saldo disponible" value={money(balance)} color="from-emerald-500 to-green-700" />
+        <WithdrawStat label="Horario" value="10 AM - 5 PM" color="from-amber-400 to-orange-600" />
       </div>
       <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
         Para retirar es obligatorio tener al menos una recarga aprobada por administracion. El monto minimo de retiro es RD$200.
@@ -100,6 +100,15 @@ export function Withdraw() {
           ))}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function WithdrawStat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className={`rounded-2xl bg-gradient-to-br ${color} p-4 text-white shadow-lg shadow-slate-300/50`}>
+      <p className="text-[11px] font-black uppercase tracking-wide text-white/75">{label}</p>
+      <p className="mt-2 text-lg font-black">{value}</p>
     </div>
   );
 }
