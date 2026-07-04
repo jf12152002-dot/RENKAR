@@ -233,7 +233,7 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
         <h1 className="text-2xl font-black">Planes</h1>
         <p className="text-sm text-slate-400">Compra planes con tu balance disponible.</p>
       </div>
-      <Card className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-800 p-5 text-white">
+      <Card className="green-hero-card p-5 text-white">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[.16em] text-white/75">Balance disponible</p>
