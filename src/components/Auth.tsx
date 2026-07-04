@@ -4,7 +4,7 @@ import { useApp } from '../hooks/useApp';
 import { Button, Card, Field, inputClass } from './ui';
 
 export function Auth() {
-  const { login, register, resetDemo } = useApp();
+  const { login, register } = useApp();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState('');
 
@@ -82,9 +82,6 @@ export function Auth() {
           <Button className="w-full">{mode === 'login' ? 'Entrar a mi cuenta' : 'Crear cuenta'}</Button>
         </form>
 
-        <div className="mt-5 grid gap-2 text-xs leading-5 text-slate-500">
-          <button className="text-left font-bold text-emerald-700" onClick={() => void resetDemo()}>Restaurar datos demo</button>
-        </div>
       </Card>
     </main>
   );

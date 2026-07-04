@@ -24,6 +24,9 @@ export function WelcomeModal({ onClose }: { onClose: () => void }) {
           <p className="text-sm leading-6 text-slate-600">
             Gestiona tu cuenta RENKAR desde un solo lugar, con seguimiento de tus planes activos, movimientos, referidos y solicitudes bancarias.
           </p>
+          <p className="text-sm leading-6 text-slate-600">
+            RENKAR tambien te ofrece premios adicionales: trabaja, invita y comienza a ganar codigos canjeables.
+          </p>
           <p className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
             Unete al grupo oficial de WhatsApp para recibir avisos, soporte y novedades importantes de la plataforma.
           </p>
