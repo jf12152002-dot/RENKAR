@@ -3,7 +3,7 @@ import { Bell, ChevronRight, CreditCard, FileText, Gift, Headphones, Lock, LogOu
 import { useApp } from '../hooks/useApp';
 import { accruedProfit, availableBalance, creditedReferralLineBonus, paidWithdrawals, referralBonus } from '../utils/calculations';
 import { money } from '../utils/format';
-import { Button, Card, Field, inputClass, Stat } from '../components/ui';
+import { Button, Card, Field, inputClass } from '../components/ui';
 
 type ProfilePanel = 'payments' | 'gift' | 'security' | 'notifications' | 'terms' | null;
 
@@ -88,18 +88,23 @@ export function Profile() {
 
   return (
     <div className="space-y-4">
-      <Card className="text-center">
-        <div className="premium-ring mx-auto mb-3 grid h-20 w-20 place-items-center rounded-[2rem] bg-emerald-700 text-2xl font-black text-white">
-          {currentUser?.name.slice(0, 1)}
+      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-fuchsia-500 via-violet-700 to-blue-800 p-5 text-center text-white shadow-2xl shadow-violet-500/20">
+        <div className="absolute -left-12 -top-16 h-40 w-40 rounded-full bg-white/25 blur-3xl" />
+        <div className="absolute -bottom-16 right-4 h-36 w-36 rounded-full bg-emerald-300/35 blur-3xl" />
+        <div className="relative">
+          <div className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-[2rem] border border-white/30 bg-white/20 text-2xl font-black text-white shadow-sm backdrop-blur">
+            {currentUser?.name.slice(0, 1)}
+          </div>
+          <p className="text-xs font-black uppercase tracking-[.24em] text-white/70">Perfil RENKAR</p>
+          <h1 className="mt-1 text-2xl font-black">{currentUser?.name}</h1>
+          <p className="text-sm text-white/75">Telefono: {currentUser?.email}</p>
         </div>
-        <h1 className="text-2xl font-black">{currentUser?.name}</h1>
-        <p className="text-sm text-slate-500">Telefono: {currentUser?.email}</p>
       </Card>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Balance total" value={money(availableBalance(investments, withdrawals, referrals, movements))} accent="text-emerald-700" />
-        <Stat label="Ganancias totales" value={money(accruedProfit(investments) + totalReferralBonus)} />
-        <Stat label="Total retirado" value={money(paidWithdrawals(withdrawals))} accent="text-amber-700" />
-        <Stat label="Referidos totales" value={String(referrals.length)} />
+        <ProfileStat label="Balance total" value={money(availableBalance(investments, withdrawals, referrals, movements))} color="from-emerald-500 to-green-700" />
+        <ProfileStat label="Ganancias totales" value={money(accruedProfit(investments) + totalReferralBonus)} color="from-sky-500 to-blue-700" />
+        <ProfileStat label="Total retirado" value={money(paidWithdrawals(withdrawals))} color="from-amber-400 to-orange-600" />
+        <ProfileStat label="Referidos totales" value={String(referrals.length)} color="from-fuchsia-500 to-violet-700" />
       </div>
       {notice && <p className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
       <Card>
@@ -107,8 +112,10 @@ export function Profile() {
           {rows.map((row) => {
             const Icon = row.icon;
             return (
-              <button key={row.label} onClick={() => openRow(row.id)} className="flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition hover:bg-emerald-50 active:scale-[.99]">
-                <Icon className="mt-1 h-5 w-5 shrink-0 text-emerald-700" />
+              <button key={row.label} onClick={() => openRow(row.id)} className="flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-100 hover:bg-emerald-50 active:scale-[.99]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-700 text-white shadow-sm">
+                  <Icon className="h-5 w-5" />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{row.label}</p>
                   <p className="truncate text-xs text-slate-500">{row.value}</p>
@@ -211,6 +218,15 @@ const labels = {
   bonuses: 'Bonos',
   support: 'Soporte'
 };
+
+function ProfileStat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className={`rounded-2xl bg-gradient-to-br ${color} p-4 text-white shadow-lg shadow-slate-300/50`}>
+      <p className="text-[11px] font-black uppercase tracking-wide text-white/75">{label}</p>
+      <p className="mt-2 text-lg font-black">{value}</p>
+    </div>
+  );
+}
 
 function panelTitle(panel: Exclude<ProfilePanel, null>) {
   const titles = {

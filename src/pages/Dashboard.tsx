@@ -17,6 +17,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const totalProfit = accruedProfit(investments) + totalReferralBonus;
   const activeReferrals = referrals.filter((item) => item.status === 'Activo').length;
   const referralProgress = activeReferrals % 5;
+  const completedReferralBlocks = Math.floor(activeReferrals / 5);
   const referralPercent = Math.min(100, (referralProgress / 5) * 100);
   const chartItems = [
     { label: 'Inversión', value: activeInvestment, color: '#047857' },
@@ -29,10 +30,10 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
     .slice(0, 3);
 
   const shortcuts = [
-    { id: 'invest', label: 'Comprar', icon: WalletCards },
-    { id: 'withdraw', label: 'Retirar', icon: ArrowDownToLine },
-    { id: 'referrals', label: 'Referidos', icon: UserRoundPlus },
-    { id: 'history', label: 'Historial', icon: History }
+    { id: 'invest', label: 'Comprar', icon: WalletCards, color: 'from-sky-500 to-blue-700' },
+    { id: 'withdraw', label: 'Retirar', icon: ArrowDownToLine, color: 'from-emerald-500 to-green-700' },
+    { id: 'referrals', label: 'Referidos', icon: UserRoundPlus, color: 'from-amber-400 to-orange-600' },
+    { id: 'history', label: 'Historial', icon: History, color: 'from-fuchsia-500 to-violet-700' }
   ] as const;
 
   return (
@@ -45,31 +46,31 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
         <Badge tone="ok">Cuenta verificada</Badge>
       </div>
 
-      <Card className="relative overflow-hidden border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-5">
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-emerald-200/55 blur-3xl" />
-        <div className="absolute -bottom-16 left-6 h-36 w-36 rounded-full bg-amber-100/80 blur-3xl" />
+      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-sky-500 via-blue-700 to-violet-800 p-5 text-white shadow-2xl shadow-blue-500/20">
+        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/25 blur-3xl" />
+        <div className="absolute -bottom-16 left-6 h-36 w-36 rounded-full bg-emerald-300/35 blur-3xl" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-700 text-white shadow-glow">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20 text-white shadow-sm backdrop-blur">
               <Landmark className="h-6 w-6" />
             </span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[.16em] text-slate-500">Balance disponible</p>
-              <p className="text-xs text-slate-500">Actualizado con datos internos</p>
+              <p className="text-xs font-bold uppercase tracking-[.16em] text-white/75">Balance disponible</p>
+              <p className="text-xs text-white/75">Actualizado con datos internos</p>
             </div>
           </div>
-          <ShieldCheck className="h-6 w-6 text-emerald-700" />
+          <ShieldCheck className="h-6 w-6 text-emerald-200" />
         </div>
 
-        <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-slate-950">{money(balance)}</h2>
+        <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-white">{money(balance)}</h2>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-emerald-100 bg-white/85 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Ganancia hoy</p>
-            <p className="mt-1 text-xl font-black text-emerald-700">{money(dailyProfitTotal(investments))}</p>
+          <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
+            <p className="text-xs font-bold uppercase tracking-wide text-white/70">Ganancia hoy</p>
+            <p className="mt-1 text-xl font-black text-emerald-100">{money(dailyProfitTotal(investments))}</p>
           </div>
-          <div className="rounded-2xl border border-amber-100 bg-white/85 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Horario retiros</p>
-            <p className="mt-1 text-sm font-black text-amber-700">10 AM - 5 PM</p>
+          <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
+            <p className="text-xs font-bold uppercase tracking-wide text-white/70">Horario retiros</p>
+            <p className="mt-1 text-sm font-black text-amber-100">10 AM - 5 PM</p>
           </div>
         </div>
       </Card>
@@ -78,9 +79,9 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
         {shortcuts.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="rounded-[1.35rem] border border-slate-100 bg-white p-3 text-center text-xs font-bold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50">
-              <span className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50">
-                <Icon className="h-5 w-5 text-emerald-700" />
+            <button key={item.id} onClick={() => setTab(item.id)} className={`rounded-[1.35rem] bg-gradient-to-br ${item.color} p-3 text-center text-xs font-black text-white shadow-lg shadow-slate-300/50 transition hover:-translate-y-0.5`}>
+              <span className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-2xl bg-white/20 backdrop-blur">
+                <Icon className="h-5 w-5 text-white" />
               </span>
               {item.label}
             </button>
@@ -100,10 +101,10 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Inversion total" value={money(activeInvestment)} />
+        <Stat label="Inversion total" value={money(activeInvestment)} accent="text-blue-700" />
         <Stat label="Ganancias totales" value={money(totalProfit)} accent="text-emerald-700" />
         <Stat label="Retiros totales" value={money(paidWithdrawals(withdrawals))} accent="text-rose-700" />
-        <Stat label="Referidos" value={String(referrals.length)} accent="text-amber-700" />
+        <Stat label="Referidos" value={String(referrals.length)} accent="text-violet-700" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -123,7 +124,9 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
             <UserRoundPlus className="h-5 w-5 text-amber-700" />
             <h2 className="font-black text-slate-900">Referidos</h2>
           </div>
-          <p className="text-sm text-slate-500">{referralProgress}/5 activos para bono unico de $100</p>
+          <p className="text-sm font-black text-slate-900">{activeReferrals} activos</p>
+          <p className="mt-1 text-xs text-slate-500">{referralProgress}/5 para el proximo bono de $100</p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">{completedReferralBlocks} grupos completados</p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-emerald-700" style={{ width: `${referralPercent}%` }} />
           </div>

@@ -15,6 +15,7 @@ export function Referrals() {
   const link = `https://renkarapp.com/register?code=${currentUser?.referralCode}`;
   const shareMessage = `Unete a RENKAR con mi codigo ${currentUser?.referralCode} y empieza a invertir desde RD$ 600. ${link}`;
   const progress = active % 5;
+  const completedBlocks = Math.floor(active / 5);
   const blockBonus = referralBonus(referrals);
   const lineBonus = creditedReferralLineBonus(movements);
 
@@ -48,10 +49,12 @@ export function Referrals() {
         </button>
       </Card>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Progreso al bono" value={`${progress}/5`} accent="text-amber-700" />
+        <Stat label="Referidos activos" value={`${active}`} accent="text-emerald-700" />
+        <Stat label="Proximo bono" value={`${progress}/5`} accent="text-amber-700" />
+        <Stat label="Grupos completados" value={`${completedBlocks}`} accent="text-sky-700" />
         <Stat label="Bono 5 activos" value={money(blockBonus)} accent="text-emerald-700" />
         <Stat label="Bonos por lineas" value={money(lineBonus)} accent="text-emerald-700" />
-        <Stat label="Total referidos" value={money(blockBonus + lineBonus)} accent="text-emerald-700" />
+        <Stat label="Total ganado" value={money(blockBonus + lineBonus)} accent="text-emerald-700" />
       </div>
       <Card>
         <div className="mb-3 flex items-center gap-2">
@@ -83,7 +86,7 @@ export function Referrals() {
         <div className="mb-3 h-3 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-emerald-700" style={{ width: `${(progress / 5) * 100}%` }} />
         </div>
-        <h2 className="mb-3 font-bold">Lista de referidos</h2>
+        <h2 className="mb-3 font-bold">Lista de referidos ({referrals.length})</h2>
         <div className="space-y-3">
           {referrals.map((referral) => (
             <div key={referral.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">

@@ -149,7 +149,7 @@ export function Invest() {
             <div className={`bg-gradient-to-br ${visual.gradient} p-5 text-white`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-[.2em] text-white/80">{plan.name}</p>
+                  <p className="text-base font-black uppercase tracking-[.22em] text-white/90">{plan.name}</p>
                   <h2 className="mt-2 text-4xl font-black tracking-tight">{rdMoney(plan.amount)}</h2>
                   <p className="text-sm font-semibold text-white/85">Inversion inicial</p>
                 </div>
