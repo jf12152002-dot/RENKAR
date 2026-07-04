@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, CirclePlus, Clipboard, ShieldCheck, TrendingUp } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { CirclePlus, Clipboard, ShieldCheck, TrendingUp } from 'lucide-react';
 import { plans } from '../data/plans';
 import { useApp } from '../hooks/useApp';
 import { Button, Card, Field, inputClass } from '../components/ui';
@@ -67,6 +68,19 @@ export function Invest() {
       });
       setSent(true);
       form.reset();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Solicitud enviada',
+        text: 'Tu comprobante fue recibido y queda pendiente de validacion por administracion.',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#047857',
+        background: '#ffffff',
+        color: '#0f172a',
+        customClass: {
+          popup: 'rounded-[1.75rem]',
+          confirmButton: 'rounded-2xl px-5 py-3 font-black'
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar la solicitud.');
     }
@@ -194,15 +208,6 @@ export function Invest() {
           <Button className="w-full">Enviar para validacion</Button>
         </form>
         {error && <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">{error}</p>}
-        {sent && (
-          <div className="mt-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-center shadow-sm">
-            <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-700" />
-            <h3 className="mt-2 text-lg font-black text-emerald-800">Solicitud enviada</h3>
-            <p className="mt-1 text-sm font-semibold text-emerald-700">
-              Tu comprobante fue recibido y queda pendiente de validacion por administracion.
-            </p>
-          </div>
-        )}
         <p className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
           Tu inversion sera activada cuando el pago sea validado por administracion.
         </p>
