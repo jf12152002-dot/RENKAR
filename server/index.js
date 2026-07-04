@@ -1090,7 +1090,7 @@ app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPre
   const storedRecharge = await storeVoucherFile(recharge);
   state.recharges.unshift(storedRecharge);
   state.movements.unshift({
-    id: `mov-${withdrawal.id}`,
+    id: `mov-${storedRecharge.id}`,
     userId: currentUserId,
     type: 'Deposito',
     amount: Number(storedRecharge.amount),

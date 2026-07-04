@@ -22,6 +22,7 @@ export function Invest() {
   const [selected, setSelected] = useState(availablePlans[0]);
   const [amount, setAmount] = useState(availablePlans[0].amount);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const activeAccounts = (state.paymentAccounts || []).filter((account) => account.active);
   const [selectedAccountId, setSelectedAccountId] = useState(activeAccounts[0]?.id || '');
@@ -43,21 +44,27 @@ export function Invest() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError('');
+    setSent(false);
     const form = event.currentTarget;
     const data = new FormData(form);
     const receiptFile = data.get('receipt') as File;
     const receiptDataUrl = receiptFile?.size ? await fileToDataUrl(receiptFile) : '';
-    await createRecharge({
-      planId: selected.id,
-      bankName: selectedAccount?.bank || String(data.get('bankName')),
-      referenceNumber: selectedAccount?.accountNumber || '',
-      amount: Number(data.get('amount')),
-      transferDate: String(data.get('transferDate')),
-      receiptName: receiptFile?.name || 'comprobante.jpg',
-      receiptDataUrl
-    });
-    setSent(true);
-    form.reset();
+    try {
+      await createRecharge({
+        planId: selected.id,
+        bankName: selectedAccount?.bank || String(data.get('bankName')),
+        referenceNumber: selectedAccount?.accountNumber || '',
+        amount: Number(data.get('amount')),
+        transferDate: String(data.get('transferDate')),
+        receiptName: receiptFile?.name || 'comprobante.jpg',
+        receiptDataUrl
+      });
+      setSent(true);
+      form.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo enviar la solicitud.');
+    }
   }
 
   async function copyAccountNumber() {
@@ -180,6 +187,7 @@ export function Invest() {
           <Field label="Comprobante de pago"><input className={`${inputClass} file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-700 file:px-3 file:py-2 file:font-bold file:text-white`} name="receipt" required type="file" accept="image/*" /></Field>
           <Button className="w-full">Enviar para validacion</Button>
         </form>
+        {error && <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-black text-red-700">{error}</p>}
         <p className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
           Tu inversion sera activada cuando el pago sea validado por administracion.
         </p>
