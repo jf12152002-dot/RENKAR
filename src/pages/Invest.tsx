@@ -1,21 +1,57 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
-import { CirclePlus, Clipboard, ShieldCheck, TrendingUp } from 'lucide-react';
+import { Clipboard, ShieldCheck, TrendingUp } from 'lucide-react';
 import { plans } from '../data/plans';
 import { useApp } from '../hooks/useApp';
 import { Button, Card, Field, inputClass } from '../components/ui';
 
 const rdMoney = (value: number) => `RD$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)}`;
 const dailyRoi = (dailyEarnings: number, investmentAmount: number) => ((dailyEarnings / investmentAmount) * 100).toFixed(2);
-const planNameColors: Record<string, string> = {
-  'plan-renkar-a': 'text-emerald-700',
-  'plan-renkar-b': 'text-sky-700',
-  'plan-renkar-c': 'text-violet-700',
-  'plan-renkar-d': 'text-amber-700',
-  'plan-renkar-e': 'text-teal-700',
-  'plan-renkar-f': 'text-indigo-700',
-  'plan-renkar-g': 'text-rose-700'
+const planVisualStyles: Record<string, { gradient: string; text: string; soft: string; button: string }> = {
+  'plan-renkar-a': {
+    gradient: 'from-emerald-400 via-emerald-600 to-green-700',
+    text: 'text-emerald-700',
+    soft: 'bg-emerald-50 text-emerald-700',
+    button: 'from-emerald-500 to-green-700'
+  },
+  'plan-renkar-b': {
+    gradient: 'from-sky-400 via-blue-600 to-indigo-700',
+    text: 'text-blue-700',
+    soft: 'bg-blue-50 text-blue-700',
+    button: 'from-sky-500 to-blue-700'
+  },
+  'plan-renkar-c': {
+    gradient: 'from-fuchsia-500 via-violet-600 to-purple-800',
+    text: 'text-violet-700',
+    soft: 'bg-violet-50 text-violet-700',
+    button: 'from-fuchsia-500 to-violet-700'
+  },
+  'plan-renkar-d': {
+    gradient: 'from-amber-300 via-orange-500 to-yellow-700',
+    text: 'text-amber-700',
+    soft: 'bg-amber-50 text-amber-700',
+    button: 'from-amber-400 to-orange-600'
+  },
+  'plan-renkar-e': {
+    gradient: 'from-cyan-400 via-teal-500 to-emerald-700',
+    text: 'text-teal-700',
+    soft: 'bg-teal-50 text-teal-700',
+    button: 'from-cyan-500 to-teal-700'
+  },
+  'plan-renkar-f': {
+    gradient: 'from-indigo-500 via-blue-700 to-slate-900',
+    text: 'text-indigo-700',
+    soft: 'bg-indigo-50 text-indigo-700',
+    button: 'from-indigo-500 to-blue-800'
+  },
+  'plan-renkar-g': {
+    gradient: 'from-rose-500 via-red-600 to-orange-700',
+    text: 'text-rose-700',
+    soft: 'bg-rose-50 text-rose-700',
+    button: 'from-rose-500 to-red-700'
+  }
 };
+const defaultPlanVisual = planVisualStyles['plan-renkar-a'];
 
 export function Invest() {
   const { state, createRecharge } = useApp();
@@ -107,34 +143,45 @@ export function Invest() {
         {availablePlans.map((plan) => {
           const isSelected = selected.id === plan.id;
           const roi = dailyRoi(plan.dailyProfit, plan.amount);
-          const planNameColor = planNameColors[plan.id] || 'text-emerald-700';
+          const visual = planVisualStyles[plan.id] || defaultPlanVisual;
           return (
-          <Card key={plan.id} className={`transition hover:-translate-y-0.5 ${isSelected ? 'premium-ring border-emerald-200 shadow-glow' : ''}`}>
-            <div className="grid grid-cols-[1fr_6.75rem] items-center gap-4">
-              <div className="min-w-0">
-                <h2 className="text-3xl font-black text-slate-950">{rdMoney(plan.amount)}</h2>
-                <div className={`mt-3 flex flex-wrap items-center gap-2 ${isSelected ? 'plan-selected-fade' : ''}`}>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-black text-emerald-700">
-                    <CirclePlus className="h-4 w-4" />
-                    +{rdMoney(plan.dailyProfit)}/dia
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-800">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    ROI {roi}%
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600">
-                    {plan.durationDays} dias
-                  </span>
+          <Card key={plan.id} className={`overflow-hidden p-0 transition hover:-translate-y-0.5 ${isSelected ? 'premium-ring border-emerald-200 shadow-glow' : ''}`}>
+            <div className={`bg-gradient-to-br ${visual.gradient} p-5 text-white`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[.2em] text-white/80">{plan.name}</p>
+                  <h2 className="mt-2 text-4xl font-black tracking-tight">{rdMoney(plan.amount)}</h2>
+                  <p className="text-sm font-semibold text-white/85">Inversion inicial</p>
+                </div>
+                <div className="rounded-3xl border border-white/25 bg-white/20 px-4 py-3 text-center shadow-sm backdrop-blur">
+                  <p className="text-2xl font-black">{roi}%</p>
+                  <p className="text-[11px] font-bold text-white/85">por dia</p>
                 </div>
               </div>
-              <div className="flex flex-col items-stretch gap-2">
-                <div className="grid min-h-20 place-items-center px-3 text-center">
-                  <span className={`text-sm font-black uppercase tracking-wide ${planNameColor}`}>
-                    {plan.name}
-                  </span>
+            </div>
+            <div className={`space-y-4 bg-white p-4 ${isSelected ? 'plan-selected-fade' : ''}`}>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Renta diaria</p>
+                  <p className={`mt-1 text-sm font-black ${visual.text}`}>{rdMoney(plan.dailyProfit)}</p>
                 </div>
-                <Button className="w-full px-3 py-3 text-xs" onClick={() => selectPlan(plan)}>Comprar</Button>
+                <div className="rounded-2xl bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Duracion</p>
+                  <p className="mt-1 text-sm font-black text-slate-900">{plan.durationDays} dias</p>
+                </div>
+                <div className={`rounded-2xl p-3 text-center ${visual.soft}`}>
+                  <p className="text-[10px] font-black uppercase tracking-wide opacity-70">Ganancia</p>
+                  <p className="mt-1 text-sm font-black">+{rdMoney(plan.dailyProfit)}/dia</p>
+                </div>
               </div>
+              <button
+                type="button"
+                className={`w-full rounded-2xl bg-gradient-to-r ${visual.button} px-4 py-3 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 active:scale-[.98]`}
+                onClick={() => selectPlan(plan)}
+              >
+                <TrendingUp className="mr-2 inline h-4 w-4" />
+                Comprar
+              </button>
             </div>
           </Card>
           );
