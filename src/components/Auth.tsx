@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Cctv, LockKeyhole, Mail, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
+import { Cctv, LockKeyhole, Phone, ShieldCheck } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
 import { Button, Card, Field, inputClass } from './ui';
 
@@ -11,13 +11,13 @@ export function Auth() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const email = String(data.get('email'));
+    const phone = String(data.get('phone'));
     const password = String(data.get('password'));
     const result =
       mode === 'login'
-        ? await login(email, password)
-        : await register(String(data.get('name')), email, password, String(data.get('referral') || ''));
-    setError(result.ok ? '' : result.message || (mode === 'login' ? 'Credenciales incorrectas.' : 'Ese correo ya existe.'));
+        ? await login(phone, password)
+        : await register(String(data.get('name')), phone, password, String(data.get('referral') || ''));
+    setError(result.ok ? '' : result.message || (mode === 'login' ? 'Credenciales incorrectas.' : 'Ese numero ya existe.'));
   }
 
   return (
@@ -57,10 +57,10 @@ export function Auth() {
               <input className={inputClass} name="name" required placeholder="Tu nombre" />
             </Field>
           )}
-          <Field label="Correo">
+          <Field label="Numero de telefono">
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
-              <input className={`${inputClass} pl-11`} name="email" type="email" required placeholder="demo@renkar.app" />
+              <Phone className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
+              <input className={`${inputClass} pl-11`} name="phone" type="tel" inputMode="tel" required placeholder="8091234567" />
             </div>
           </Field>
           <Field label="Clave">

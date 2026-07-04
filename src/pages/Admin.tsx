@@ -436,7 +436,7 @@ function UsersAdminTable({
 
   return (
     <Card>
-      <SimpleToolbar title="Usuarios registrados" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar nombre, correo, rol o estado" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
+      <SimpleToolbar title="Usuarios registrados" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar nombre, telefono, rol o estado" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
       <p className="mt-3 text-sm text-slate-400">Bloquea o desbloquea el acceso de cualquier usuario al sistema.</p>
       <div className="mt-4 space-y-3">
         {paged.items.map((user) => {
@@ -757,7 +757,7 @@ function AdminTableToolbar({
         </div>
         <Badge tone="neutral">{count}</Badge>
       </div>
-      <input className={inputClass} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nombre, correo, monto, banco o fecha" />
+      <input className={inputClass} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nombre, telefono, monto, banco o fecha" />
       <div className="grid grid-cols-2 gap-2">
         <select className={inputClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
           {statuses.map((status) => <option key={status}>{status}</option>)}

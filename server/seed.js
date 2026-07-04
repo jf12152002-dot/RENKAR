@@ -18,7 +18,7 @@ export const seedState = {
     {
       id: 'user-demo',
       name: 'Maria Alvarez',
-      email: 'demo@renkar.app',
+      email: '8091234567',
       password: '123456',
       role: 'user',
       joinedAt: daysAgo(16),
@@ -29,7 +29,7 @@ export const seedState = {
     {
       id: 'admin-demo',
       name: 'Admin RENKAR',
-      email: 'admin@renkar.app',
+      email: '8090000001',
       password: 'admin123',
       role: 'admin',
       joinedAt: daysAgo(40),
@@ -40,7 +40,7 @@ export const seedState = {
     {
       id: 'admin-recharges-demo',
       name: 'Admin Recargas',
-      email: 'recargas@renkar.app',
+      email: '8090000002',
       password: 'admin123',
       role: 'admin_recharges',
       joinedAt: daysAgo(20),
@@ -51,7 +51,7 @@ export const seedState = {
     {
       id: 'admin-withdrawals-demo',
       name: 'Admin Retiros',
-      email: 'retiros@renkar.app',
+      email: '8090000003',
       password: 'admin123',
       role: 'admin_withdrawals',
       joinedAt: daysAgo(20),
@@ -62,7 +62,7 @@ export const seedState = {
     {
       id: 'supervisor-demo',
       name: 'Supervisor RENKAR',
-      email: 'supervisor@renkar.app',
+      email: '8090000004',
       password: 'admin123',
       role: 'supervisor',
       joinedAt: daysAgo(20),

@@ -33,18 +33,18 @@ export const api = {
     const userId = currentUserId();
     return request<AppState>(`/api/state${userId ? `?currentUserId=${userId}` : ''}`);
   },
-  async login(email: string, password: string) {
+  async login(phone: string, password: string) {
     const state = await request<AppState & { token: string }>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ phone, email: phone, password })
     });
     persistToken(state);
     return state;
   },
-  async register(name: string, email: string, password: string, referralCode?: string) {
+  async register(name: string, phone: string, password: string, referralCode?: string) {
     const state = await request<AppState & { token: string }>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, password, referralCode })
+      body: JSON.stringify({ name, phone, email: phone, password, referralCode })
     });
     persistToken(state);
     return state;

@@ -704,6 +704,22 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function normalizePhone(value) {
+  return cleanText(value, 40).replace(/\D/g, '');
+}
+
+function isValidPhone(value) {
+  return /^\d{7,15}$/.test(value);
+}
+
+const legacyLoginAliases = {
+  '8091234567': 'demo@renkar.app',
+  '8090000001': 'admin@renkar.app',
+  '8090000002': 'recargas@renkar.app',
+  '8090000003': 'retiros@renkar.app',
+  '8090000004': 'supervisor@renkar.app'
+};
+
 function uniqueReferralCode(state, name) {
   const base = cleanText(name, 40).split(/\s+/)[0]?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || 'USER';
   for (let i = 0; i < 20; i += 1) {
@@ -827,7 +843,7 @@ async function sendTelegramRechargeNotification({ recharge, user }) {
     'Nueva solicitud de recarga',
     '',
     `Usuario: ${user.name}`,
-    `Correo: ${user.email}`,
+    `Telefono: ${user.email}`,
     `Monto: ${formatMoney(recharge.amount)}`,
     `Banco: ${recharge.bankName}`,
     `Cuenta: ${recharge.referenceNumber || 'No especificada'}`,
@@ -866,7 +882,7 @@ async function sendTelegramWithdrawalNotification({ withdrawal, user }) {
     'Nueva solicitud de retiro',
     '',
     `Usuario: ${user.name}`,
-    `Correo: ${user.email}`,
+    `Telefono: ${user.email}`,
     `Monto: ${formatMoney(withdrawal.amount)}`,
     `Banco: ${withdrawal.bank}`,
     `Titular: ${withdrawal.accountHolder}`,
@@ -978,9 +994,13 @@ app.post('/api/reset', async (req, res) => {
 
 app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'login' }), async (req, res) => {
   const state = await readDb();
-  const email = normalizeEmail(req.body.email);
+  const phone = normalizePhone(req.body.phone || req.body.email);
+  const legacyEmail = normalizeEmail(req.body.email || req.body.phone);
   const password = String(req.body.password || '');
-  const user = state.users.find((item) => item.email.toLowerCase() === email);
+  const legacyAlias = legacyLoginAliases[phone];
+  const user = state.users.find((item) =>
+    normalizePhone(item.email) === phone || item.email.toLowerCase() === legacyEmail || item.email.toLowerCase() === legacyAlias
+  );
   if (!user || !password || !verifyPassword(password, user.password)) return res.status(401).json({ message: 'Credenciales incorrectas.' });
   if (!String(user.password || '').startsWith('scrypt:')) {
     user.password = hashPassword(password);
@@ -993,20 +1013,20 @@ app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPr
 app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, keyPrefix: 'register' }), async (req, res) => {
   const state = await readDb();
   const name = cleanText(req.body.name, 80);
-  const email = normalizeEmail(req.body.email);
+  const phone = normalizePhone(req.body.phone || req.body.email);
   const password = String(req.body.password || '');
   const referralCode = cleanText(req.body.referralCode, 30);
   if (name.length < 2) return res.status(400).json({ message: 'Escribe tu nombre completo.' });
-  if (!isValidEmail(email)) return res.status(400).json({ message: 'Escribe un correo valido.' });
+  if (!isValidPhone(phone)) return res.status(400).json({ message: 'Escribe un numero de telefono valido.' });
   if (password.length < 6) return res.status(400).json({ message: 'La clave debe tener al menos 6 caracteres.' });
-  if (state.users.some((user) => user.email.toLowerCase() === email)) {
-    return res.status(409).json({ message: 'Ese correo ya existe.' });
+  if (state.users.some((user) => normalizePhone(user.email) === phone)) {
+    return res.status(409).json({ message: 'Ese numero de telefono ya existe.' });
   }
   const referredBy = state.users.find((user) => user.referralCode.toLowerCase() === String(referralCode || '').toLowerCase());
   const user = {
     id: uid('user'),
     name,
-    email,
+    email: phone,
     password: hashPassword(password),
     role: 'user',
     joinedAt: new Date().toISOString(),
@@ -1017,7 +1037,7 @@ app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, ke
   };
   state.users.push(user);
   state.movements.unshift({
-    id: `mov-${storedRecharge.id}`,
+    id: uid('mov'),
     userId: user.id,
     type: 'Bono de registro',
     amount: 200,
@@ -1297,7 +1317,7 @@ app.patch('/api/admin/users/:id/block', async (req, res) => {
   }
   user.blocked = Boolean(req.body.blocked);
   const nextState = await writeDb(state, currentUserId);
-  await logAdminAction(state, currentUserId, user.blocked ? 'block_user' : 'unblock_user', 'user', user.id, { email: user.email });
+  await logAdminAction(state, currentUserId, user.blocked ? 'block_user' : 'unblock_user', 'user', user.id, { phone: user.email });
   res.json(clientState(nextState, currentUserId));
 });
 

@@ -93,7 +93,7 @@ export function Profile() {
           {currentUser?.name.slice(0, 1)}
         </div>
         <h1 className="text-2xl font-black">{currentUser?.name}</h1>
-        <p className="text-sm text-slate-500">{currentUser?.email}</p>
+        <p className="text-sm text-slate-500">Telefono: {currentUser?.email}</p>
       </Card>
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Balance total" value={money(availableBalance(investments, withdrawals, referrals, movements))} accent="text-emerald-700" />

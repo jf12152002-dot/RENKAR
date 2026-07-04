@@ -8,8 +8,8 @@ interface AppContextValue {
   currentUser: User | null;
   loading: boolean;
   error: string;
-  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
-  register: (name: string, email: string, password: string, referralCode?: string) => Promise<{ ok: boolean; message?: string }>;
+  login: (phone: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  register: (name: string, phone: string, password: string, referralCode?: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   resetDemo: () => Promise<void>;
   createRecharge: (payload: {
@@ -91,17 +91,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     currentUser,
     loading,
     error,
-    async login(email, password) {
+    async login(phone, password) {
       try {
-        await run(() => api.login(email, password));
+        await run(() => api.login(phone, password));
         return { ok: true };
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : 'No se pudo iniciar sesion.' };
       }
     },
-    async register(name, email, password, referralCode) {
+    async register(name, phone, password, referralCode) {
       try {
-        await run(() => api.register(name, email, password, referralCode));
+        await run(() => api.register(name, phone, password, referralCode));
         return { ok: true };
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : 'No se pudo crear la cuenta.' };
