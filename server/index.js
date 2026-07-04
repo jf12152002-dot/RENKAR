@@ -683,13 +683,18 @@ async function storeVoucherFile(recharge) {
   const { mimeType, buffer } = parseVoucherDataUrl(recharge.receiptDataUrl);
   const extension = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
   const folder = path.join(uploadsDir, 'vouchers');
-  await fs.mkdir(folder, { recursive: true });
-  const filename = `${recharge.id}.${extension}`;
-  await fs.writeFile(path.join(folder, filename), buffer);
-  return {
-    ...recharge,
-    receiptDataUrl: `/uploads/vouchers/${filename}`
-  };
+  try {
+    await fs.mkdir(folder, { recursive: true });
+    const filename = `${recharge.id}.${extension}`;
+    await fs.writeFile(path.join(folder, filename), buffer);
+    return {
+      ...recharge,
+      receiptDataUrl: `/uploads/vouchers/${filename}`
+    };
+  } catch (error) {
+    console.error('Voucher storage error:', error.message);
+    return recharge;
+  }
 }
 
 function cleanText(value, max = 120) {
@@ -1058,50 +1063,55 @@ app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, ke
 });
 
 app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPrefix: 'recharges' }), async (req, res) => {
-  const currentUserId = clientId(req);
-  const state = await readDb();
-  const user = requireActiveUser(state, currentUserId, res);
-  if (!user) return;
-  if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para invertir es de 9:00 AM a 7:00 PM.')) return;
-  const plan = state.plans.find((item) => item.id === req.body.planId);
-  if (!plan) return res.status(400).json({ message: 'Selecciona un plan de inversion valido.' });
-  const paymentAccount = activePaymentAccountByNumber(state, req.body.referenceNumber);
-  if (!paymentAccount) return res.status(400).json({ message: 'Selecciona una cuenta bancaria activa de RENKAR.' });
-  if (!req.body.receiptDataUrl) return res.status(400).json({ message: 'Debes subir el comprobante de pago.' });
   try {
-    parseVoucherDataUrl(req.body.receiptDataUrl);
+    const currentUserId = clientId(req);
+    const state = await readDb();
+    const user = requireActiveUser(state, currentUserId, res);
+    if (!user) return;
+    if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para invertir es de 9:00 AM a 7:00 PM.')) return;
+    const plan = state.plans.find((item) => item.id === req.body.planId);
+    if (!plan) return res.status(400).json({ message: 'Selecciona un plan de inversion valido.' });
+    const paymentAccount = activePaymentAccountByNumber(state, req.body.referenceNumber);
+    if (!paymentAccount) return res.status(400).json({ message: 'Selecciona una cuenta bancaria activa de RENKAR.' });
+    if (!req.body.receiptDataUrl) return res.status(400).json({ message: 'Debes subir el comprobante de pago.' });
+    try {
+      parseVoucherDataUrl(req.body.receiptDataUrl);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+    const recharge = {
+      id: uid('rec'),
+      userId: currentUserId,
+      planId: plan.id,
+      bankName: paymentAccount.bank,
+      referenceNumber: paymentAccount.accountNumber,
+      amount: Number(plan.amount),
+      transferDate: cleanText(req.body.transferDate, 20),
+      receiptName: cleanText(req.body.receiptName || 'comprobante.jpg', 160),
+      receiptDataUrl: req.body.receiptDataUrl,
+      status: 'Pendiente de validacion',
+      createdAt: new Date().toISOString()
+    };
+    const telegramReceiptDataUrl = recharge.receiptDataUrl;
+    const storedRecharge = await storeVoucherFile(recharge);
+    state.recharges.unshift(storedRecharge);
+    state.movements.unshift({
+      id: `mov-${storedRecharge.id}`,
+      userId: currentUserId,
+      type: 'Deposito',
+      amount: Number(storedRecharge.amount),
+      status: 'Pendiente de validacion',
+      createdAt: new Date().toISOString()
+    });
+    const nextState = await writeDb(state, currentUserId);
+    sendTelegramRechargeNotification({ recharge: { ...storedRecharge, receiptDataUrl: telegramReceiptDataUrl || storedRecharge.receiptDataUrl }, user }).catch((error) => {
+      console.error('Telegram recharge notification error:', error.message);
+    });
+    res.json(clientState(nextState, currentUserId));
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    console.error('Recharge creation error:', error);
+    res.status(500).json({ message: 'No se pudo enviar la solicitud. Intenta de nuevo o contacta soporte.' });
   }
-  const recharge = {
-    id: uid('rec'),
-    userId: currentUserId,
-    planId: plan.id,
-    bankName: paymentAccount.bank,
-    referenceNumber: paymentAccount.accountNumber,
-    amount: Number(plan.amount),
-    transferDate: cleanText(req.body.transferDate, 20),
-    receiptName: cleanText(req.body.receiptName || 'comprobante.jpg', 160),
-    receiptDataUrl: req.body.receiptDataUrl,
-    status: 'Pendiente de validacion',
-    createdAt: new Date().toISOString()
-  };
-  const telegramReceiptDataUrl = recharge.receiptDataUrl;
-  const storedRecharge = await storeVoucherFile(recharge);
-  state.recharges.unshift(storedRecharge);
-  state.movements.unshift({
-    id: `mov-${storedRecharge.id}`,
-    userId: currentUserId,
-    type: 'Deposito',
-    amount: Number(storedRecharge.amount),
-    status: 'Pendiente de validacion',
-    createdAt: new Date().toISOString()
-  });
-  const nextState = await writeDb(state, currentUserId);
-  sendTelegramRechargeNotification({ recharge: { ...storedRecharge, receiptDataUrl: telegramReceiptDataUrl || storedRecharge.receiptDataUrl }, user }).catch((error) => {
-    console.error('Telegram recharge notification error:', error.message);
-  });
-  res.json(clientState(nextState, currentUserId));
 });
 
 app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPrefix: 'withdrawals' }), async (req, res) => {
@@ -1394,6 +1404,16 @@ app.patch('/api/admin/gift-codes', async (req, res) => {
   const nextState = await writeDb(state, currentUserId);
   await logAdminAction(state, currentUserId, 'update_gift_codes', 'gift_codes', null, { count: state.giftCodes.length });
   res.json(clientState(nextState, currentUserId));
+});
+
+app.use((error, _req, res, next) => {
+  if (!error) return next();
+  console.error('API error:', error.message);
+  if (res.headersSent) return next(error);
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'El comprobante es demasiado pesado. Sube una imagen mas liviana.' });
+  }
+  return res.status(500).json({ message: 'Error de servidor.' });
 });
 
 app.use('/uploads', express.static(uploadsDir));
