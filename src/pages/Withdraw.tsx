@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { withdrawableBalance } from '../utils/calculations';
+import { availableBalance } from '../utils/calculations';
 import { dateOnly, money } from '../utils/format';
 import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 
@@ -9,10 +9,12 @@ export function Withdraw() {
   const [sent, setSent] = useState(false);
   const investments = state.investments.filter((item) => item.userId === currentUser?.id);
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
+  const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
+  const movements = state.movements.filter((item) => item.userId === currentUser?.id);
   const activeAccounts = (state.paymentAccounts || []).filter((account) => account.active);
   const hasApprovedRecharge = state.recharges.some((item) => item.userId === currentUser?.id && item.status === 'Aprobada');
   const hasWithdrawalToday = withdrawals.some((item) => isSameDominicanDate(item.createdAt, new Date()));
-  const balance = withdrawableBalance(investments, withdrawals);
+  const balance = availableBalance(investments, withdrawals, referrals, movements);
   const withdrawScheduleOpen = isWithdrawalScheduleOpen();
   const minimumWithdrawalAmount = 200;
   const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday;

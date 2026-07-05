@@ -1203,7 +1203,7 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
     });
   }
   const requestedAmount = Number(req.body.amount);
-  const availableBalance = withdrawableBalanceForUser(state, currentUserId);
+  const availableBalance = availableBalanceForUser(state, currentUserId);
   const minimumWithdrawalAmount = 200;
   if (!Number.isFinite(requestedAmount) || requestedAmount < minimumWithdrawalAmount) {
     return res.status(400).json({
