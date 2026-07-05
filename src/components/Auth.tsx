@@ -81,7 +81,7 @@ export function Auth() {
           </Field>
           {mode === 'register' && (
             <Field label="Codigo de referido opcional">
-              <input className={inputClass} name="referral" placeholder="MARIA350" defaultValue={referralCodeFromUrl} />
+              <input className={inputClass} name="referral" placeholder="K7P4XQ9" defaultValue={referralCodeFromUrl} />
             </Field>
           )}
           {error && (

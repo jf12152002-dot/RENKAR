@@ -22,7 +22,7 @@ export const seedState = {
       password: '123456',
       role: 'user',
       joinedAt: daysAgo(16),
-      referralCode: 'MARIA350',
+      referralCode: 'K7P4XQ9',
       bankMethods: ['Banco Popular **** 9182', 'Banreservas **** 4471'],
       blocked: false
     },
@@ -33,7 +33,7 @@ export const seedState = {
       password: 'admin123',
       role: 'admin',
       joinedAt: daysAgo(40),
-      referralCode: 'ADMIN',
+      referralCode: 'R8N2K4A',
       bankMethods: [],
       blocked: false
     },
@@ -44,7 +44,7 @@ export const seedState = {
       password: 'admin123',
       role: 'admin_recharges',
       joinedAt: daysAgo(20),
-      referralCode: 'RECARGAS',
+      referralCode: 'C5M9Q2R',
       bankMethods: [],
       blocked: false
     },
@@ -55,7 +55,7 @@ export const seedState = {
       password: 'admin123',
       role: 'admin_withdrawals',
       joinedAt: daysAgo(20),
-      referralCode: 'RETIROS',
+      referralCode: 'T6W3L8S',
       bankMethods: [],
       blocked: false
     },
@@ -66,7 +66,7 @@ export const seedState = {
       password: 'admin123',
       role: 'supervisor',
       joinedAt: daysAgo(20),
-      referralCode: 'SUPERV',
+      referralCode: 'V4Z7P2D',
       bankMethods: [],
       blocked: false
     }

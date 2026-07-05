@@ -624,6 +624,18 @@ function normalizeState(state) {
       createdAt: user.joinedAt || new Date().toISOString()
     }));
   const legacyNumbers = new Set(['001-000000-1', '777-000000-2', '960-000000-3', '']);
+  const usedReferralCodes = new Set();
+  const normalizedUsers = mergedUsers.map((user) => {
+    const nextUser = { blocked: false, ...user };
+    const currentCode = String(nextUser.referralCode || '').toUpperCase();
+    if (!currentCode || isNameBasedReferralCode(nextUser) || usedReferralCodes.has(currentCode.toLowerCase())) {
+      nextUser.referralCode = deterministicReferralCode(nextUser, usedReferralCodes);
+    } else {
+      nextUser.referralCode = currentCode;
+    }
+    usedReferralCodes.add(String(nextUser.referralCode).toLowerCase());
+    return nextUser;
+  });
   return {
     ...seedState,
     ...state,
@@ -644,7 +656,7 @@ function normalizeState(state) {
       dailyProfit: Number(plan.dailyProfit) || Math.round((Number(plan.amount) || 0) * (Number(plan.roiPercent) || 0) / 100),
       durationDays: Number(plan.durationDays) || 30
     })).filter((plan) => plan.id && plan.name && plan.amount > 0),
-    users: mergedUsers.map((user) => ({ blocked: false, ...user })),
+    users: normalizedUsers,
     paymentAccounts: paymentAccounts.map((account) => ({
       ...account,
       bank: account.bank === 'Banco Multiple BHD' ? 'Banco Múltiple BHD' : account.bank,
@@ -729,13 +741,41 @@ const legacyLoginAliases = {
   '8090000004': 'supervisor@renkar.app'
 };
 
-function uniqueReferralCode(state, name) {
-  const base = cleanText(name, 40).split(/\s+/)[0]?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || 'USER';
-  for (let i = 0; i < 20; i += 1) {
-    const code = `${base}${Math.floor(Math.random() * 900 + 100)}`;
-    if (!state.users.some((user) => user.referralCode.toLowerCase() === code.toLowerCase())) return code;
+const referralAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function codeFromBytes(bytes, length = 7) {
+  let code = '';
+  for (let index = 0; index < length; index += 1) {
+    code += referralAlphabet[bytes[index % bytes.length] % referralAlphabet.length];
   }
-  return `${base}${cryptoNode.randomBytes(3).toString('hex').toUpperCase()}`;
+  if (!/\d/.test(code)) code = `${code.slice(0, -1)}${2 + (bytes[0] % 8)}`;
+  return code;
+}
+
+function deterministicReferralCode(user, usedCodes = new Set()) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const seed = `${user.id || ''}|${user.email || ''}|${user.name || ''}|${attempt}`;
+    const bytes = cryptoNode.createHash('sha256').update(seed).digest();
+    const code = codeFromBytes(bytes);
+    if (!usedCodes.has(code.toLowerCase())) return code;
+  }
+  return uniqueReferralCode({ users: Array.from(usedCodes).map((code) => ({ referralCode: code })) });
+}
+
+function isNameBasedReferralCode(user) {
+  const code = String(user.referralCode || '').toUpperCase();
+  const nameBase = cleanText(user.name || '', 40).split(/\s+/)[0]?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || '';
+  if (!code || code.length < 6) return true;
+  if (nameBase.length >= 3 && code.startsWith(nameBase.slice(0, Math.min(5, nameBase.length)))) return true;
+  return ['ADMIN', 'RECARGAS', 'RETIROS', 'SUPERV', 'MARIA350'].includes(code);
+}
+
+function uniqueReferralCode(state) {
+  for (let i = 0; i < 40; i += 1) {
+    const code = codeFromBytes(cryptoNode.randomBytes(16));
+    if (!state.users.some((user) => String(user.referralCode || '').toLowerCase() === code.toLowerCase())) return code;
+  }
+  return codeFromBytes(cryptoNode.randomBytes(24), 9);
 }
 
 function activePaymentAccountByNumber(state, accountNumber) {

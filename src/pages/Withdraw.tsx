@@ -56,7 +56,7 @@ export function Withdraw() {
       )}
       {hasWithdrawalToday && (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
-          Ya solicitaste un retiro hoy. Podras solicitar otro retiro manana dentro del horario disponible.
+          Ya solicitaste un retiro hoy. Podras solicitar otro retiro mañana dentro del horario disponible.
         </p>
       )}
       {!withdrawScheduleOpen && (
