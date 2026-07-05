@@ -63,11 +63,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
         </div>
 
         <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-white">{money(balance)}</h2>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-wide text-white/70">Ganancia hoy</p>
-            <p className="mt-1 text-xl font-black text-white">{money(balance)}</p>
-          </div>
+        <div className="mt-5">
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Horario retiros</p>
             <p className="mt-1 text-sm font-black text-white">10 AM - 5 PM</p>
