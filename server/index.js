@@ -805,6 +805,16 @@ function availableBalanceForUser(state, userId) {
   return approvedDeposits + accrued + referralBonus + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
 }
 
+function withdrawableBalanceForUser(state, userId) {
+  const investments = state.investments.filter((item) => item.userId === userId && item.active);
+  const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
+  const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
+  const reservedWithdrawals = withdrawals
+    .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  return Math.max(0, accrued - reservedWithdrawals);
+}
+
 async function logAdminAction(state, adminUserId, action, entityType, entityId, metadata = {}) {
   if (!pool) return;
   await pool.query(
@@ -1194,7 +1204,7 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
     });
   }
   const requestedAmount = Number(req.body.amount);
-  const availableBalance = availableBalanceForUser(state, currentUserId);
+  const availableBalance = withdrawableBalanceForUser(state, currentUserId);
   const minimumWithdrawalAmount = 200;
   if (!Number.isFinite(requestedAmount) || requestedAmount < minimumWithdrawalAmount) {
     return res.status(400).json({

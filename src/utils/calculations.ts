@@ -59,6 +59,10 @@ export function availableBalance(investments: Investment[], withdrawals: Withdra
   return approvedDeposits(movements) + accruedProfit(investments) + referralBonus(referrals) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
 }
 
+export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {
+  return Math.max(0, accruedProfit(investments) - reservedWithdrawals(withdrawals));
+}
+
 export function movementAmount(movement: Movement) {
   return movement.amount >= 0 ? `+${movement.amount}` : String(movement.amount);
 }

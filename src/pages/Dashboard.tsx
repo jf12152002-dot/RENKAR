@@ -1,6 +1,6 @@
 import { ArrowDownToLine, CalendarClock, CheckCircle2, Clock, History, Landmark, ShieldCheck, TrendingUp, UserRoundPlus, WalletCards } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
-import { accruedProfit, availableBalance, creditedReferralLineBonus, dailyProfitTotal, paidWithdrawals, referralBonus } from '../utils/calculations';
+import { accruedProfit, availableBalance, creditedReferralLineBonus, paidWithdrawals, referralBonus, withdrawableBalance } from '../utils/calculations';
 import { dateOnly, dateTime, money } from '../utils/format';
 import { Badge, Card, Stat } from '../components/ui';
 import { Tab } from '../components/BottomNav';
@@ -12,6 +12,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
   const balance = availableBalance(investments, withdrawals, referrals, movements);
+  const withdrawable = withdrawableBalance(investments, withdrawals);
   const activeInvestment = investments.reduce((sum, item) => sum + item.amount, 0);
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
   const totalProfit = accruedProfit(investments) + totalReferralBonus;
@@ -66,7 +67,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Ganancia hoy</p>
-            <p className="mt-1 text-xl font-black text-white">{money(dailyProfitTotal(investments))}</p>
+            <p className="mt-1 text-xl font-black text-white">{money(withdrawable)}</p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Horario retiros</p>
