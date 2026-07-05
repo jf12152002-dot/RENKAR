@@ -1,6 +1,6 @@
 import { ArrowDownToLine, CalendarClock, CheckCircle2, Clock, History, Landmark, ShieldCheck, TrendingUp, UserRoundPlus, WalletCards } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
-import { accruedProfit, availableBalance, creditedReferralLineBonus, paidWithdrawals, referralBonus, withdrawableBalance } from '../utils/calculations';
+import { accruedProfit, creditedReferralLineBonus, paidWithdrawals, referralBonus, withdrawableBalance } from '../utils/calculations';
 import { dateOnly, dateTime, money } from '../utils/format';
 import { Badge, Card, Stat } from '../components/ui';
 import { Tab } from '../components/BottomNav';
@@ -11,7 +11,6 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
-  const balance = availableBalance(investments, withdrawals, referrals, movements);
   const withdrawable = withdrawableBalance(investments, withdrawals);
   const activeInvestment = investments.reduce((sum, item) => sum + item.amount, 0);
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
@@ -63,7 +62,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
           <ShieldCheck className="h-6 w-6 text-white" />
         </div>
 
-        <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-white">{money(balance)}</h2>
+        <h2 className="mt-6 text-[2.9rem] font-black leading-none tracking-[-.06em] text-white">{money(withdrawable)}</h2>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-wide text-white/70">Ganancia hoy</p>
