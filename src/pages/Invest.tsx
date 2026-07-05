@@ -270,6 +270,8 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
           const roi = dailyRoi(plan.dailyProfit, plan.amount);
           const visual = planVisualStyles[plan.id] || defaultPlanVisual;
           const hasBalance = balance >= plan.amount;
+          const purchasesCount = investments.filter((investment) => investment.planId === plan.id).length;
+          const reachedLimit = purchasesCount >= 2;
           const isBuying = buyingPlanId === plan.id;
           return (
             <Card key={plan.id} className={`relative overflow-hidden border-0 bg-gradient-to-br ${visual.panel} p-0 shadow-2xl ${visual.glow} transition hover:-translate-y-0.5`}>
@@ -290,6 +292,11 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
 
                 <div className="mt-5 space-y-3 rounded-[1.35rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
                   <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Compras permitidas</p>
+                    <p className={`text-sm font-black ${reachedLimit ? 'text-rose-600' : visual.text}`}>{Math.min(purchasesCount, 2)}/2</p>
+                  </div>
+                  <div className="h-px bg-slate-100" />
+                  <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-black uppercase tracking-wide text-slate-400">Ganancia cada 24h</p>
                     <p className={`text-lg font-black ${visual.text}`}>+{rdMoney(plan.dailyProfit)}</p>
                   </div>
@@ -309,10 +316,10 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
                   type="button"
                   className={`mt-4 w-full rounded-[1.25rem] bg-gradient-to-r ${visual.button} px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50`}
                   onClick={() => buyPlan(plan.id)}
-                  disabled={!hasBalance || isBuying}
+                  disabled={reachedLimit || !hasBalance || isBuying}
                 >
                   <TrendingUp className="mr-2 inline h-4 w-4" />
-                  {isBuying ? 'Comprando...' : hasBalance ? 'Comprar' : 'Saldo insuficiente'}
+                  {isBuying ? 'Comprando...' : reachedLimit ? 'Limite alcanzado' : hasBalance ? 'Comprar' : 'Saldo insuficiente'}
                 </button>
               </div>
             </Card>

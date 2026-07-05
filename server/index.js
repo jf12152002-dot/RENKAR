@@ -1183,6 +1183,10 @@ app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max:
   if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para comprar planes es de 9:00 AM a 7:00 PM.')) return;
   const plan = state.plans.find((item) => item.id === req.body.planId) || plans.find((item) => item.id === req.body.planId);
   if (!plan) return res.status(400).json({ message: 'Selecciona un plan valido.' });
+  const purchasesCount = state.investments.filter((item) => item.userId === currentUserId && item.planId === plan.id).length;
+  if (purchasesCount >= 2) {
+    return res.status(409).json({ message: 'Ya compraste este plan 2 veces. Selecciona otro plan disponible.' });
+  }
   const availableBalance = availableBalanceForUser(state, currentUserId);
   if (Number(plan.amount) > availableBalance) {
     return res.status(400).json({
