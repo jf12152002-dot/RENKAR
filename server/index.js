@@ -757,9 +757,8 @@ function dominicanDateParts() {
   };
 }
 
-function isWithinSchedule(startHour, endHour, { mondayToSaturday = false } = {}) {
-  const { weekday, minutes } = dominicanDateParts();
-  if (mondayToSaturday && weekday === 'Sun') return false;
+function isWithinSchedule(startHour, endHour) {
+  const { minutes } = dominicanDateParts();
   return minutes >= startHour * 60 && minutes <= endHour * 60;
 }
 
@@ -1189,7 +1188,7 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
   const state = await readDb();
   const user = requireActiveUser(state, currentUserId, res);
   if (!user) return;
-  if (!ensureSchedule(res, isWithinSchedule(10, 17, { mondayToSaturday: true }), 'Los retiros estan disponibles de lunes a sabado de 10:00 AM a 5:00 PM.')) return;
+  if (!ensureSchedule(res, isWithinSchedule(10, 17), 'Los retiros estan disponibles todos los dias de 10:00 AM a 5:00 PM.')) return;
   const hasApprovedRecharge = state.recharges.some((item) => item.userId === currentUserId && item.status === 'Aprobada');
   if (!hasApprovedRecharge) {
     return res.status(403).json({

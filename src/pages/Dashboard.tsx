@@ -114,7 +114,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
             <CalendarClock className="h-5 w-5 text-emerald-700" />
             <h2 className="font-black text-slate-900">Retiro</h2>
           </div>
-          <p className="text-sm text-slate-500">Diarios de lunes a sabado, 10:00 AM - 5:00 PM.</p>
+          <p className="text-sm text-slate-500">Diarios, 10:00 AM - 5:00 PM.</p>
           <button onClick={() => setTab('withdraw')} className="mt-4 w-full rounded-2xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white">
             Solicitar
           </button>
@@ -186,7 +186,7 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
 
       <Card className="flex items-center gap-3">
         <Clock className="text-amber-600" />
-        <p className="text-sm text-slate-600">Retiros diarios de lunes a sabado, 10:00 AM - 5:00 PM, con comision de retiro del 15%.</p>
+        <p className="text-sm text-slate-600">Retiros diarios, 10:00 AM - 5:00 PM, con comision de retiro del 15%.</p>
       </Card>
     </div>
   );

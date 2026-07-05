@@ -196,7 +196,7 @@ export function Profile() {
                 <div className="space-y-3 text-sm text-slate-600">
                   <p>RENKAR registra solicitudes de recarga, inversion y retiro para revision administrativa.</p>
                   <p>Las recargas se activan solo cuando administracion valida la transferencia bancaria y el comprobante.</p>
-                  <p>Los retiros se procesan diariamente de lunes a sabado de 10:00 AM a 5:00 PM, aplican una comision de retiro del 15% y pueden estar en estado Pendiente, Aprobado, Rechazado o Pagado.</p>
+                  <p>Los retiros se procesan diariamente de 10:00 AM a 5:00 PM, aplican una comision de retiro del 15% y pueden estar en estado Pendiente, Aprobado, Rechazado o Pagado.</p>
                   <p>Para solicitar retiros, el usuario debe tener al menos una recarga aprobada por administracion. Los bonos, comisiones y referidos no habilitan retiros por si solos.</p>
                   <p>Las solicitudes de inversion se reciben de 9:00 AM a 7:00 PM. Fuera de ese horario no se permite crear solicitudes.</p>
                   <p>La bonificacion de referidos es un pago unico de $100 por cada bloque de 5 referidos activos.</p>

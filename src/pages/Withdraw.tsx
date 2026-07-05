@@ -37,7 +37,7 @@ export function Withdraw() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-black">Retiros</h1>
-        <p className="text-sm text-slate-400">Retiros diarios de lunes a sabado, 10:00 AM - 5:00 PM. Comision de retiro 15%.</p>
+        <p className="text-sm text-slate-400">Retiros diarios, 10:00 AM - 5:00 PM. Comision de retiro 15%.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <WithdrawStat label="Saldo disponible" value={money(balance)} color="from-emerald-500 to-green-700" />
@@ -59,7 +59,7 @@ export function Withdraw() {
       )}
       {!withdrawScheduleOpen && (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
-          Solicitudes de retiro deshabilitadas fuera de horario. Disponible de lunes a sabado, 10:00 AM - 5:00 PM.
+          Solicitudes de retiro deshabilitadas fuera de horario. Disponible todos los dias, 10:00 AM - 5:00 PM.
         </p>
       )}
       <Card>
@@ -114,15 +114,13 @@ function WithdrawStat({ label, value, color }: { label: string; value: string; c
 function isWithdrawalScheduleOpen() {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Santo_Domingo',
-    weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
   }).formatToParts(new Date());
   const value = (type: string) => parts.find((part) => part.type === type)?.value || '';
-  const weekday = value('weekday');
   const minutes = Number(value('hour')) * 60 + Number(value('minute'));
-  return weekday !== 'Sun' && minutes >= 10 * 60 && minutes <= 17 * 60;
+  return minutes >= 10 * 60 && minutes <= 17 * 60;
 }
 
 function isSameDominicanDate(date: string, compareDate: Date) {
