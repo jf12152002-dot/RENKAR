@@ -11,48 +11,62 @@ type InvestMode = 'plans' | 'recharge';
 
 const rdMoney = (value: number) => `RD$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)}`;
 const dailyRoi = (dailyEarnings: number, investmentAmount: number) => ((dailyEarnings / investmentAmount) * 100).toFixed(2);
-const planVisualStyles: Record<string, { gradient: string; text: string; soft: string; button: string }> = {
+const planVisualStyles: Record<string, { panel: string; stripe: string; text: string; soft: string; button: string; glow: string }> = {
   'plan-renkar-a': {
-    gradient: 'from-emerald-400 via-emerald-600 to-green-700',
+    panel: 'from-lime-50 via-white to-emerald-50',
+    stripe: 'from-lime-400 to-emerald-600',
     text: 'text-emerald-700',
     soft: 'bg-emerald-50 text-emerald-700',
-    button: 'from-emerald-500 to-green-700'
+    button: 'from-lime-500 to-emerald-700',
+    glow: 'shadow-emerald-200/70'
   },
   'plan-renkar-b': {
-    gradient: 'from-sky-400 via-blue-600 to-indigo-700',
+    panel: 'from-sky-50 via-white to-blue-50',
+    stripe: 'from-sky-400 to-blue-700',
     text: 'text-blue-700',
     soft: 'bg-blue-50 text-blue-700',
-    button: 'from-sky-500 to-blue-700'
+    button: 'from-sky-500 to-blue-700',
+    glow: 'shadow-blue-200/70'
   },
   'plan-renkar-c': {
-    gradient: 'from-fuchsia-500 via-violet-600 to-purple-800',
-    text: 'text-violet-700',
-    soft: 'bg-violet-50 text-violet-700',
-    button: 'from-fuchsia-500 to-violet-700'
+    panel: 'from-fuchsia-50 via-white to-rose-50',
+    stripe: 'from-fuchsia-500 to-rose-600',
+    text: 'text-fuchsia-700',
+    soft: 'bg-fuchsia-50 text-fuchsia-700',
+    button: 'from-fuchsia-500 to-rose-600',
+    glow: 'shadow-fuchsia-200/70'
   },
   'plan-renkar-d': {
-    gradient: 'from-amber-300 via-orange-500 to-yellow-700',
+    panel: 'from-amber-50 via-white to-orange-50',
+    stripe: 'from-amber-400 to-orange-600',
     text: 'text-amber-700',
     soft: 'bg-amber-50 text-amber-700',
-    button: 'from-amber-400 to-orange-600'
+    button: 'from-amber-400 to-orange-600',
+    glow: 'shadow-amber-200/70'
   },
   'plan-renkar-e': {
-    gradient: 'from-cyan-400 via-teal-500 to-emerald-700',
+    panel: 'from-cyan-50 via-white to-teal-50',
+    stripe: 'from-cyan-400 to-teal-700',
     text: 'text-teal-700',
     soft: 'bg-teal-50 text-teal-700',
-    button: 'from-cyan-500 to-teal-700'
+    button: 'from-cyan-500 to-teal-700',
+    glow: 'shadow-cyan-200/70'
   },
   'plan-renkar-f': {
-    gradient: 'from-indigo-500 via-blue-700 to-slate-900',
+    panel: 'from-indigo-50 via-white to-slate-100',
+    stripe: 'from-indigo-500 to-slate-800',
     text: 'text-indigo-700',
     soft: 'bg-indigo-50 text-indigo-700',
-    button: 'from-indigo-500 to-blue-800'
+    button: 'from-indigo-500 to-slate-800',
+    glow: 'shadow-indigo-200/70'
   },
   'plan-renkar-g': {
-    gradient: 'from-rose-500 via-red-600 to-orange-700',
+    panel: 'from-red-50 via-white to-orange-50',
+    stripe: 'from-red-500 to-orange-700',
     text: 'text-rose-700',
     soft: 'bg-rose-50 text-rose-700',
-    button: 'from-rose-500 to-red-700'
+    button: 'from-red-500 to-orange-700',
+    glow: 'shadow-red-200/70'
   }
 };
 const defaultPlanVisual = planVisualStyles['plan-renkar-a'];
@@ -258,38 +272,42 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
           const hasBalance = balance >= plan.amount;
           const isBuying = buyingPlanId === plan.id;
           return (
-            <Card key={plan.id} className="overflow-hidden p-0 transition hover:-translate-y-0.5">
-              <div className={`bg-gradient-to-br ${visual.gradient} p-5 text-white`}>
+            <Card key={plan.id} className={`relative overflow-hidden border-0 bg-gradient-to-br ${visual.panel} p-0 shadow-2xl ${visual.glow} transition hover:-translate-y-0.5`}>
+              <div className={`absolute inset-y-0 left-0 w-2 bg-gradient-to-b ${visual.stripe}`} />
+              <div className="absolute -right-12 -top-14 h-32 w-32 rounded-full bg-white/70 blur-2xl" />
+              <div className="p-5 pl-6">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xl font-black uppercase tracking-[.18em] text-white">{plan.name}</p>
-                    <h2 className="mt-2 text-4xl font-black tracking-tight">{rdMoney(plan.amount)}</h2>
-                    <p className="text-sm font-semibold text-white/85">Inversion inicial</p>
+                  <div className="min-w-0">
+                    <p className={`text-2xl font-black uppercase tracking-[.16em] ${visual.text}`}>{plan.name}</p>
+                    <h2 className="mt-2 text-[2.65rem] font-black leading-none tracking-[-.05em] text-slate-950">{rdMoney(plan.amount)}</h2>
+                    <p className="mt-1 text-xs font-black uppercase tracking-wide text-slate-400">Capital de entrada</p>
                   </div>
-                  <div className="rounded-3xl border border-white/25 bg-white/20 px-4 py-3 text-center shadow-sm backdrop-blur">
+                  <div className={`shrink-0 rounded-[1.35rem] border border-white/70 px-4 py-3 text-center shadow-lg backdrop-blur ${visual.soft}`}>
                     <p className="text-2xl font-black">{roi}%</p>
-                    <p className="text-[11px] font-bold text-white/85">por dia</p>
+                    <p className="text-[10px] font-black uppercase tracking-wide opacity-70">ROI diario</p>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-4 bg-white p-4">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl bg-slate-50 p-3 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Renta diaria</p>
-                    <p className={`mt-1 text-sm font-black ${visual.text}`}>{rdMoney(plan.dailyProfit)}</p>
+
+                <div className="mt-5 space-y-3 rounded-[1.35rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Ganancia cada 24h</p>
+                    <p className={`text-lg font-black ${visual.text}`}>+{rdMoney(plan.dailyProfit)}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-3 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Duracion</p>
-                    <p className="mt-1 text-sm font-black text-slate-900">{plan.durationDays} dias</p>
+                  <div className="h-px bg-slate-100" />
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Duracion del plan</p>
+                    <p className="text-sm font-black text-slate-900">{plan.durationDays} dias</p>
                   </div>
-                  <div className={`rounded-2xl p-3 text-center ${visual.soft}`}>
-                    <p className="text-[10px] font-black uppercase tracking-wide opacity-70">Ganancia</p>
-                    <p className="mt-1 text-sm font-black">+{rdMoney(plan.dailyProfit)}/dia</p>
+                  <div className="h-px bg-slate-100" />
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">Proyeccion total</p>
+                    <p className="text-sm font-black text-slate-900">{rdMoney(plan.dailyProfit * plan.durationDays)}</p>
                   </div>
                 </div>
+
                 <button
                   type="button"
-                  className={`w-full rounded-2xl bg-gradient-to-r ${visual.button} px-4 py-3 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50`}
+                  className={`mt-4 w-full rounded-[1.25rem] bg-gradient-to-r ${visual.button} px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50`}
                   onClick={() => buyPlan(plan.id)}
                   disabled={!hasBalance || isBuying}
                 >
