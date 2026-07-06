@@ -1,7 +1,7 @@
 {
   "name": "RENKAR",
   "short_name": "RENKAR",
-  "description": "Web app demo de inversiones con validacion manual.",
+  "description": "RENKAR, plataforma de inversiones.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07111f",

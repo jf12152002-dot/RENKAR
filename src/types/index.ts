@@ -13,8 +13,16 @@ export interface User {
   joinedAt: string;
   referralCode: string;
   referredBy?: string;
-  bankMethods: string[];
+  bankMethods: UserBankAccount[];
   blocked: boolean;
+}
+
+export interface UserBankAccount {
+  id: string;
+  bank: string;
+  accountHolder: string;
+  accountNumber: string;
+  accountType: string;
 }
 
 export interface InvestmentPlan {

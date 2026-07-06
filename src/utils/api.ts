@@ -1,4 +1,4 @@
-import { AppState, GiftCode, InvestmentPlan, PaymentAccount, RechargeStatus, WithdrawalStatus } from '../types';
+import { AppState, GiftCode, InvestmentPlan, PaymentAccount, RechargeStatus, UserBankAccount, WithdrawalStatus } from '../types';
 
 const baseUrl = import.meta.env.VITE_API_URL || '';
 const tokenKey = 'renkar-user-id';
@@ -86,7 +86,7 @@ export const api = {
       body: JSON.stringify({ status, currentUserId: currentUserId() })
     });
   },
-  updateUser(id: string, payload: { bankMethods?: string[]; password?: string }) {
+  updateUser(id: string, payload: { bankMethods?: UserBankAccount[]; password?: string }) {
     return request<AppState>(`/api/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ ...payload, currentUserId: currentUserId() })

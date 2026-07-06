@@ -1,9 +1,10 @@
 import { FormEvent, useState } from 'react';
-import { Bell, ChevronRight, CreditCard, FileText, Gift, Headphones, Lock, LogOut, X } from 'lucide-react';
+import { Bell, ChevronRight, CreditCard, FileText, Gift, Headphones, Lock, LogOut, Plus, Trash2, X } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
 import { accruedProfit, availableBalance, creditedReferralLineBonus, paidWithdrawals, referralBonus } from '../utils/calculations';
 import { money } from '../utils/format';
 import { Button, Card, Field, inputClass } from '../components/ui';
+import { banks } from '../data/banks';
 
 type ProfilePanel = 'payments' | 'gift' | 'security' | 'notifications' | 'terms' | null;
 
@@ -11,6 +12,7 @@ export function Profile() {
   const { currentUser, state, logout, updateUserProfile, redeemGiftCode } = useApp();
   const [panel, setPanel] = useState<ProfilePanel>(null);
   const [notice, setNotice] = useState('');
+  const [showBankForm, setShowBankForm] = useState(false);
   const [notifications, setNotifications] = useState({
     recharges: true,
     withdrawals: true,
@@ -22,6 +24,7 @@ export function Profile() {
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
   const activePaymentAccounts = (state.paymentAccounts || []).filter((account) => account.active);
+  const userBankAccounts = currentUser?.bankMethods || [];
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
 
   const rows = [
@@ -29,9 +32,9 @@ export function Profile() {
       id: 'payments' as const,
       icon: CreditCard,
       label: 'Metodos de pago',
-      value: activePaymentAccounts.length
-        ? `${activePaymentAccounts.length} cuentas disponibles`
-        : 'Sin cuentas publicadas por administracion'
+      value: userBankAccounts.length
+        ? `${userBankAccounts.length} cuentas de retiro guardadas`
+        : 'Agrega tus cuentas para retiros'
     },
     { id: 'gift' as const, icon: Gift, label: 'Codigo de regalo', value: 'Canjea bonos disponibles' },
     { id: 'security' as const, icon: Lock, label: 'Seguridad', value: 'Cambiar clave de acceso' },
@@ -42,11 +45,38 @@ export function Profile() {
 
   function openRow(id: (typeof rows)[number]['id']) {
     setNotice('');
+    setShowBankForm(false);
     if (id === 'chat') {
       window.dispatchEvent(new Event('renkar:open-chat'));
       return;
     }
     setPanel(id);
+  }
+
+  async function saveBankAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const account = {
+      id: `bank-${Date.now()}`,
+      bank: String(data.get('bank') || ''),
+      accountHolder: String(data.get('accountHolder') || '').trim(),
+      accountNumber: String(data.get('accountNumber') || '').trim(),
+      accountType: String(data.get('accountType') || '')
+    };
+    if (!banks.includes(account.bank) || !account.accountHolder || !account.accountNumber || !account.accountType) {
+      setNotice('Completa todos los datos de la cuenta bancaria.');
+      return;
+    }
+    await updateUserProfile({ bankMethods: [...userBankAccounts, account] });
+    form.reset();
+    setShowBankForm(false);
+    setNotice('Cuenta bancaria agregada correctamente.');
+  }
+
+  async function removeBankAccount(id: string) {
+    await updateUserProfile({ bankMethods: userBankAccounts.filter((account) => account.id !== id) });
+    setNotice('Cuenta bancaria eliminada.');
   }
 
   async function savePassword(event: FormEvent<HTMLFormElement>) {
@@ -141,19 +171,69 @@ export function Profile() {
               {panel === 'payments' && (
                 <div className="space-y-3">
                   <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                    Usa una de estas cuentas oficiales para transferir. La inversion se activa solo cuando administracion valide el pago.
+                    Agrega tus cuentas bancarias para retiros. Luego, en Retiros solo seleccionas la cuenta y escribes el monto.
                   </p>
-                  {activePaymentAccounts.map((account) => (
-                    <div key={account.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                      <p className="font-bold text-emerald-800">{account.bank}</p>
-                      <p className="mt-1 text-sm text-slate-600">Titular: {account.accountHolder}</p>
-                      <p className="text-sm text-slate-600">Cuenta: {account.accountNumber}</p>
-                      <p className="text-sm text-slate-500">Tipo: {account.accountType}</p>
-                    </div>
-                  ))}
-                  {!activePaymentAccounts.length && (
-                    <p className="text-sm text-slate-400">Administracion aun no ha publicado cuentas de transferencia.</p>
+                  <Button onClick={() => setShowBankForm((value) => !value)} className="flex w-full items-center justify-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Agregar cuenta de banco
+                  </Button>
+                  {showBankForm && (
+                    <form className="space-y-3 rounded-3xl border border-emerald-100 bg-emerald-50/60 p-3" onSubmit={saveBankAccount}>
+                      <Field label="Banco">
+                        <select className={inputClass} name="bank" required>
+                          {banks.map((bank) => <option key={bank}>{bank}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Nombre del titular">
+                        <input className={inputClass} name="accountHolder" required defaultValue={currentUser?.name} />
+                      </Field>
+                      <Field label="Numero de cuenta">
+                        <input className={inputClass} name="accountNumber" required inputMode="numeric" placeholder="Ej. 80000000001" />
+                      </Field>
+                      <Field label="Tipo de cuenta">
+                        <select className={inputClass} name="accountType" required>
+                          <option>Ahorro</option>
+                          <option>Corriente</option>
+                        </select>
+                      </Field>
+                      <Button className="w-full">Guardar cuenta</Button>
+                    </form>
                   )}
+                  <div className="space-y-2">
+                    <p className="text-sm font-black text-slate-800">Tus cuentas guardadas</p>
+                    {userBankAccounts.map((account) => (
+                      <div key={account.id} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-emerald-800">{account.bank}</p>
+                          <p className="mt-1 text-sm text-slate-600">Titular: {account.accountHolder}</p>
+                          <p className="text-sm text-slate-600">Cuenta: {account.accountNumber}</p>
+                          <p className="text-sm text-slate-500">Tipo: {account.accountType}</p>
+                        </div>
+                        <button onClick={() => void removeBankAccount(account.id)} className="rounded-2xl bg-rose-50 p-3 text-rose-700">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {!userBankAccounts.length && (
+                      <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                        Aun no tienes cuentas bancarias guardadas.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <p className="text-sm font-black text-slate-800">Cuentas oficiales para recargas</p>
+                    {activePaymentAccounts.map((account) => (
+                      <div key={account.id} className="rounded-2xl border border-slate-100 bg-white p-3">
+                        <p className="font-bold text-emerald-800">{account.bank}</p>
+                        <p className="mt-1 text-sm text-slate-600">Titular: {account.accountHolder}</p>
+                        <p className="text-sm text-slate-600">Cuenta: {account.accountNumber}</p>
+                        <p className="text-sm text-slate-500">Tipo: {account.accountType}</p>
+                      </div>
+                    ))}
+                    {!activePaymentAccounts.length && (
+                      <p className="text-sm text-slate-400">Administracion aun no ha publicado cuentas de transferencia.</p>
+                    )}
+                  </div>
                   <Button onClick={() => setPanel(null)} className="w-full">Cerrar</Button>
                 </div>
               )}

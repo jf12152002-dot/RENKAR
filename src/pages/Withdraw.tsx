@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useApp } from '../hooks/useApp';
 import { availableBalance } from '../utils/calculations';
 import { dateOnly, money } from '../utils/format';
@@ -7,17 +7,23 @@ import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 export function Withdraw() {
   const { currentUser, state, createWithdrawal } = useApp();
   const [sent, setSent] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
   const investments = state.investments.filter((item) => item.userId === currentUser?.id);
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
-  const activeAccounts = (state.paymentAccounts || []).filter((account) => account.active);
+  const userBankAccounts = currentUser?.bankMethods || [];
+  const selectedAccount = userBankAccounts.find((account) => account.id === selectedAccountId) || userBankAccounts[0];
   const hasApprovedRecharge = state.recharges.some((item) => item.userId === currentUser?.id && item.status === 'Aprobada');
   const hasWithdrawalToday = withdrawals.some((item) => isSameDominicanDate(item.createdAt, new Date()));
   const balance = availableBalance(investments, withdrawals, referrals, movements);
   const withdrawScheduleOpen = isWithdrawalScheduleOpen();
   const minimumWithdrawalAmount = 200;
-  const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday;
+  const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday && Boolean(selectedAccount);
+
+  useEffect(() => {
+    if (!selectedAccountId && userBankAccounts[0]) setSelectedAccountId(userBankAccounts[0].id);
+  }, [selectedAccountId, userBankAccounts]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,10 +31,10 @@ export function Withdraw() {
     const form = event.currentTarget;
     const data = new FormData(form);
     await createWithdrawal({
-      bank: String(data.get('bank')),
-      accountHolder: String(data.get('accountHolder')),
-      accountNumber: String(data.get('accountNumber')),
-      accountType: String(data.get('accountType')),
+      bank: selectedAccount?.bank || '',
+      accountHolder: selectedAccount?.accountHolder || '',
+      accountNumber: selectedAccount?.accountNumber || '',
+      accountType: selectedAccount?.accountType || '',
       amount: Number(data.get('amount'))
     });
     setSent(true);
@@ -66,21 +72,22 @@ export function Withdraw() {
       )}
       <Card>
         <form className="space-y-4" onSubmit={submit}>
-          <Field label="Banco">
-            <select className={inputClass} name="bank" required>
-              {activeAccounts.map((account) => <option key={account.id} value={account.bank}>{account.bank}</option>)}
+          <Field label="Cuenta bancaria">
+            <select className={inputClass} name="savedAccount" value={selectedAccount?.id || ''} onChange={(event) => setSelectedAccountId(event.target.value)} required>
+              {userBankAccounts.map((account) => (
+                <option key={account.id} value={account.id}>{account.bank} - {account.accountNumber}</option>
+              ))}
             </select>
           </Field>
-          {!activeAccounts.length && (
-            <p className="rounded-2xl bg-amber-300/10 p-3 text-sm text-amber-100">
-              No hay bancos activos configurados por administracion.
+          {!userBankAccounts.length && (
+            <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+              Agrega una cuenta bancaria en Perfil para poder solicitar retiros.
             </p>
           )}
-          <Field label="Nombre del titular"><input className={inputClass} name="accountHolder" required defaultValue={currentUser?.name} /></Field>
-          <Field label="Numero de cuenta"><input className={inputClass} name="accountNumber" required /></Field>
-          <Field label="Tipo de cuenta">
-            <select className={inputClass} name="accountType" required><option>Ahorro</option><option>Corriente</option></select>
-          </Field>
+          <Field label="Banco"><input className={`${inputClass} bg-slate-50`} value={selectedAccount?.bank || ''} readOnly /></Field>
+          <Field label="Nombre del titular"><input className={`${inputClass} bg-slate-50`} value={selectedAccount?.accountHolder || ''} readOnly /></Field>
+          <Field label="Numero de cuenta"><input className={`${inputClass} bg-slate-50`} value={selectedAccount?.accountNumber || ''} readOnly /></Field>
+          <Field label="Tipo de cuenta"><input className={`${inputClass} bg-slate-50`} value={selectedAccount?.accountType || ''} readOnly /></Field>
           <Field label="Monto a retirar"><input className={inputClass} name="amount" required type="number" min={minimumWithdrawalAmount} max={Math.max(minimumWithdrawalAmount, balance)} /></Field>
           <Button disabled={!canSubmit} className="w-full">Solicitar retiro</Button>
         </form>

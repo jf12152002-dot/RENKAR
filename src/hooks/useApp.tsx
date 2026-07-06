@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { demoState } from '../data/demo';
-import { AppState, GiftCode, InvestmentPlan, PaymentAccount, RechargeStatus, User, WithdrawalStatus } from '../types';
+import { AppState, GiftCode, InvestmentPlan, PaymentAccount, RechargeStatus, User, UserBankAccount, WithdrawalStatus } from '../types';
 import { api } from '../utils/api';
 
 interface AppContextValue {
@@ -30,7 +30,7 @@ interface AppContextValue {
   }) => Promise<void>;
   updateRecharge: (id: string, status: RechargeStatus) => Promise<void>;
   updateWithdrawal: (id: string, status: WithdrawalStatus) => Promise<void>;
-  updateUserProfile: (payload: { bankMethods?: string[]; password?: string }) => Promise<void>;
+  updateUserProfile: (payload: { bankMethods?: UserBankAccount[]; password?: string }) => Promise<void>;
   updateUserBlock: (id: string, blocked: boolean) => Promise<void>;
   updatePaymentAccounts: (paymentAccounts: PaymentAccount[]) => Promise<void>;
   updatePlans: (plans: InvestmentPlan[]) => Promise<void>;
@@ -48,7 +48,7 @@ function normalizeClientState(state: AppState): AppState {
     plans: Array.isArray(state.plans) ? state.plans : demoState.plans,
     paymentAccounts: Array.isArray(state.paymentAccounts) ? state.paymentAccounts : demoState.paymentAccounts,
     giftCodes: Array.isArray(state.giftCodes) ? state.giftCodes : demoState.giftCodes,
-    users: Array.isArray(state.users) ? state.users.map((user) => ({ ...user, blocked: user.blocked ?? false })) : demoState.users,
+    users: Array.isArray(state.users) ? state.users.map((user) => ({ ...user, bankMethods: Array.isArray(user.bankMethods) ? user.bankMethods : [], blocked: user.blocked ?? false })) : demoState.users,
     investments: Array.isArray(state.investments) ? state.investments : [],
     recharges: Array.isArray(state.recharges) ? state.recharges : [],
     withdrawals: Array.isArray(state.withdrawals) ? state.withdrawals : [],

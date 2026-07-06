@@ -23,7 +23,22 @@ export const seedState = {
       role: 'user',
       joinedAt: daysAgo(16),
       referralCode: 'K7P4XQ9',
-      bankMethods: ['Banco Popular **** 9182', 'Banreservas **** 4471'],
+      bankMethods: [
+        {
+          id: 'bank-user-demo-1',
+          bank: 'Banco Popular',
+          accountHolder: 'Maria Alvarez',
+          accountNumber: '8290019182',
+          accountType: 'Ahorro'
+        },
+        {
+          id: 'bank-user-demo-2',
+          bank: 'Banco Banreservas',
+          accountHolder: 'Maria Alvarez',
+          accountNumber: '8290014471',
+          accountType: 'Corriente'
+        }
+      ],
       blocked: false
     },
     {

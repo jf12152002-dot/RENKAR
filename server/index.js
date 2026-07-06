@@ -653,7 +653,7 @@ function normalizeState(state) {
   const legacyNumbers = new Set(['001-000000-1', '777-000000-2', '960-000000-3', '']);
   const usedReferralCodes = new Set();
   const normalizedUsers = mergedUsers.map((user) => {
-    const nextUser = { blocked: false, ...user };
+    const nextUser = { blocked: false, ...user, bankMethods: sanitizeUserBankAccounts(user.bankMethods) };
     const currentCode = String(nextUser.referralCode || '').toUpperCase();
     if (!currentCode || isNameBasedReferralCode(nextUser) || usedReferralCodes.has(currentCode.toLowerCase())) {
       nextUser.referralCode = deterministicReferralCode(nextUser, usedReferralCodes);
@@ -742,6 +742,44 @@ async function storeVoucherFile(recharge) {
 
 function cleanText(value, max = 120) {
   return String(value || '').trim().slice(0, max);
+}
+
+const allowedUserBanks = ['Banco Múltiple BHD', 'Banco Popular', 'Banco Banreservas'];
+
+function normalizeBankName(value) {
+  const text = cleanText(value, 80).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (text.includes('bhd')) return 'Banco Múltiple BHD';
+  if (text.includes('popular')) return 'Banco Popular';
+  if (text.includes('banreservas') || text.includes('reservas')) return 'Banco Banreservas';
+  return cleanText(value, 80);
+}
+
+function sanitizeUserBankAccounts(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        const bank = normalizeBankName(item);
+        const digits = item.replace(/\D/g, '');
+        return {
+          id: `bank-${bank.toLowerCase().replace(/\W+/g, '-')}-${digits || index}`,
+          bank,
+          accountHolder: '',
+          accountNumber: digits,
+          accountType: 'Ahorro'
+        };
+      }
+      const bank = normalizeBankName(item?.bank);
+      const accountType = cleanText(item?.accountType, 40).toLowerCase().includes('corriente') ? 'Corriente' : 'Ahorro';
+      return {
+        id: cleanText(item?.id, 80) || `bank-${Date.now()}-${index}`,
+        bank,
+        accountHolder: cleanText(item?.accountHolder, 120),
+        accountNumber: cleanText(item?.accountNumber, 60),
+        accountType
+      };
+    })
+    .filter((account) => allowedUserBanks.includes(account.bank) && account.accountHolder && account.accountNumber && account.accountType);
 }
 
 function normalizeEmail(value) {
@@ -1421,7 +1459,7 @@ app.patch('/api/users/:id', async (req, res) => {
     return res.status(403).json({ message: 'No tienes permiso para editar este perfil.' });
   }
   if (Array.isArray(req.body.bankMethods)) {
-    user.bankMethods = req.body.bankMethods.map((item) => String(item).trim()).filter(Boolean);
+    user.bankMethods = sanitizeUserBankAccounts(req.body.bankMethods);
   }
   if (req.body.password) {
     const nextPassword = String(req.body.password);
