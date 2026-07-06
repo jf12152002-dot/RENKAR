@@ -100,6 +100,21 @@ h1, h2, h3, p {
     linear-gradient(115deg, rgba(255,255,255,.08), transparent 44%, rgba(45,212,191,.16));
 }
 
+.team-total-card {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255,255,255,.25), transparent 7rem),
+    radial-gradient(circle at 92% 4%, rgba(250,204,21,.28), transparent 8rem),
+    linear-gradient(135deg, #047857 0%, #0891b2 48%, #1d4ed8 100%);
+  border: 0;
+  box-shadow: 0 24px 54px rgba(14, 116, 144, .28), inset 0 1px 0 rgba(255,255,255,.24);
+}
+
+.team-total-card::before {
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.13), transparent 42%, rgba(255,255,255,.08)),
+    radial-gradient(circle at 68% 86%, rgba(16,185,129,.28), transparent 9rem);
+}
+
 .premium-ring {
   box-shadow: 0 0 0 1px rgba(22,163,74,.14), 0 18px 44px rgba(22,163,74,.12);
 }

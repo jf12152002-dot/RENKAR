@@ -79,17 +79,17 @@ export function Referrals() {
         <Stat label="Bonos por lineas" value={money(lineBonus)} accent="text-emerald-700" />
         <Stat label="Total ganado" value={money(cycleBonus + lineBonus)} accent="text-emerald-700" />
       </div>
-      <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-blue-700 p-4 text-white shadow-xl shadow-emerald-100">
+      <Card className="team-total-card relative overflow-hidden p-4 text-white">
         <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-white/15 blur-3xl" />
         <div className="relative">
           <p className="text-xs font-black uppercase tracking-[.18em] text-white/75">Total de Equipo</p>
-          <h2 className="mt-2 text-3xl font-black tracking-[-.04em]">{money(teamTotal)}</h2>
-          <p className="mt-1 text-xs font-semibold text-white/75">Suma de planes comprados por tus Lineas 1, 2 y 3.</p>
+          <h2 className="mt-2 text-4xl font-black tracking-[-.05em] drop-shadow-sm">{money(teamTotal)}</h2>
+          <p className="mt-1 text-xs font-bold text-white/80">Suma de planes comprados por tus Lineas 1, 2 y 3.</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {teamLineTotals.map((item) => (
-              <div key={item.line} className="rounded-2xl border border-white/15 bg-white/15 p-3 text-center backdrop-blur">
-                <p className="text-[10px] font-black uppercase tracking-wide text-white/70">Linea {item.line}</p>
-                <p className="mt-1 text-sm font-black">{money(item.total)}</p>
+              <div key={item.line} className="rounded-2xl border border-white/25 bg-white/20 p-3 text-center shadow-sm backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-wide text-white/75">Linea {item.line}</p>
+                <p className="mt-1 text-sm font-black text-white">{money(item.total)}</p>
               </div>
             ))}
           </div>
