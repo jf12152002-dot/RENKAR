@@ -54,11 +54,11 @@ export function Withdraw() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-black">Retiros</h1>
-        <p className="text-sm text-slate-400">Retiros diarios, 10:00 AM - 5:00 PM. Comision de retiro 15%.</p>
+        <p className="text-sm text-slate-400">Retiros diarios, 9:00 AM - 5:00 PM. Comision de retiro 15%.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <WithdrawStat label="Saldo disponible" value={money(balance)} color="from-emerald-500 to-green-700" />
-        <WithdrawStat label="Horario" value="10 AM - 5 PM" color="from-amber-400 to-orange-600" />
+        <WithdrawStat label="Horario" value="9 AM - 5 PM" color="from-amber-400 to-orange-600" />
       </div>
       <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
         Para retirar es obligatorio tener al menos una recarga aprobada y haber comprado un plan. El monto minimo de retiro es RD$200.
@@ -81,7 +81,7 @@ export function Withdraw() {
       )}
       {!withdrawScheduleOpen && (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
-          Solicitudes de retiro deshabilitadas fuera de horario. Disponible todos los dias, 10:00 AM - 5:00 PM.
+          Solicitudes de retiro deshabilitadas fuera de horario. Disponible todos los dias, 9:00 AM - 5:00 PM.
         </p>
       )}
       <Card>
@@ -194,7 +194,7 @@ function isWithdrawalScheduleOpen() {
   }).formatToParts(new Date());
   const value = (type: string) => parts.find((part) => part.type === type)?.value || '';
   const minutes = Number(value('hour')) * 60 + Number(value('minute'));
-  return minutes >= 10 * 60 && minutes <= 17 * 60;
+  return minutes >= 9 * 60 && minutes <= 17 * 60;
 }
 
 function isSameDominicanDate(date: string, compareDate: Date) {

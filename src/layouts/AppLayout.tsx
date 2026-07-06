@@ -138,7 +138,7 @@ function buildNotifications(state: ReturnType<typeof useApp>['state'], userId?: 
     {
       id: 'schedule-withdrawals',
       title: 'Horario de retiros',
-      detail: 'Lunes a sabado de 10:00 AM a 5:00 PM.',
+      detail: 'Disponible todos los dias de 9:00 AM a 5:00 PM.',
       icon: Clock,
       tone: 'slate',
       tab: 'withdraw'
