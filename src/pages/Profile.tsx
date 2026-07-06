@@ -162,12 +162,12 @@ export function Profile() {
       </Card>
       {panel && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/60 px-4 pb-4 backdrop-blur-sm">
-          <Card className="max-h-[86vh] w-full max-w-md overflow-y-auto p-0">
-            <header className="flex items-center justify-between border-b border-slate-100 p-4">
+          <Card className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden p-0">
+            <header className="shrink-0 bg-white/95 flex items-center justify-between border-b border-slate-100 p-4">
               <h2 className="text-lg font-black">{panelTitle(panel)}</h2>
               <button onClick={() => setPanel(null)} className="rounded-full bg-slate-100 p-2 text-slate-600"><X className="h-4 w-4" /></button>
             </header>
-            <div className="p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-8">
               {panel === 'payments' && (
                 <div className="space-y-3">
                   <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
