@@ -315,7 +315,7 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
         if (giftCode.id !== id) return giftCode;
         return {
           ...giftCode,
-          [field]: field === 'amount' ? Number(value) : field === 'active' ? Boolean(value) : String(value).toUpperCase()
+          [field]: ['amount', 'maxRedemptions'].includes(field) ? Number(value) : field === 'active' ? Boolean(value) : String(value).toUpperCase()
         };
       })
     );
@@ -328,6 +328,7 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
         id: `gift-${Date.now()}`,
         code: '',
         amount: 0,
+        maxRedemptions: 50,
         active: true,
         createdAt: new Date().toISOString(),
         redeemedBy: []
@@ -346,6 +347,7 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
         ...giftCode,
         code: giftCode.code.trim().toUpperCase(),
         amount: Number(giftCode.amount),
+        maxRedemptions: Math.max(1, Math.floor(Number(giftCode.maxRedemptions) || 50)),
         redeemedBy: Array.isArray(giftCode.redeemedBy) ? giftCode.redeemedBy : []
       }))
       .filter((giftCode) => giftCode.code && giftCode.amount > 0);
@@ -370,7 +372,7 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-black text-slate-900">{giftCode.code || 'Nuevo codigo'}</p>
-                <p className="text-xs text-slate-500">{giftCode.redeemedBy.length} canjes realizados</p>
+                <p className="text-xs text-slate-500">{giftCode.redeemedBy.length}/{giftCode.maxRedemptions || 50} canjes realizados</p>
               </div>
               <button type="button" onClick={() => removeGiftCode(giftCode.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
                 Quitar
@@ -379,9 +381,19 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
             <Field label="Codigo">
               <input className={inputClass} value={giftCode.code} onChange={(event) => updateGiftCode(giftCode.id, 'code', event.target.value)} placeholder="RENKAR200" required />
             </Field>
-            <Field label="Monto del bono">
-              <input className={inputClass} value={giftCode.amount || ''} onChange={(event) => updateGiftCode(giftCode.id, 'amount', event.target.value)} type="number" min="1" required />
-            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Monto del bono">
+                <input className={inputClass} value={giftCode.amount || ''} onChange={(event) => updateGiftCode(giftCode.id, 'amount', event.target.value)} type="number" min="1" required />
+              </Field>
+              <Field label="Cantidad de personas">
+                <input className={inputClass} value={giftCode.maxRedemptions || ''} onChange={(event) => updateGiftCode(giftCode.id, 'maxRedemptions', event.target.value)} type="number" min={Math.max(1, giftCode.redeemedBy.length)} required />
+              </Field>
+            </div>
+            {giftCode.redeemedBy.length >= Number(giftCode.maxRedemptions || 50) && (
+              <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+                Este bono ya alcanzo el limite de personas configurado.
+              </p>
+            )}
             <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-3">
               <span>
                 <span className="block font-bold text-slate-900">Disponible para canjear</span>

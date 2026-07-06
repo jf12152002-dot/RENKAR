@@ -117,6 +117,7 @@ export const seedState = {
       id: 'gift-demo-1',
       code: 'RENKAR200',
       amount: 200,
+      maxRedemptions: 50,
       active: true,
       createdAt: daysAgo(2),
       redeemedBy: []

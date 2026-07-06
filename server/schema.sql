@@ -92,6 +92,7 @@ create table if not exists gift_codes (
   id text primary key,
   code text not null unique,
   amount numeric not null check (amount > 0),
+  max_redemptions integer not null default 50 check (max_redemptions > 0),
   active boolean not null default true,
   created_at timestamptz not null default now()
 );

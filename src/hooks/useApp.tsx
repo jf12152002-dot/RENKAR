@@ -48,7 +48,9 @@ function normalizeClientState(state: AppState): AppState {
     ...state,
     plans: Array.isArray(state.plans) ? state.plans : demoState.plans,
     paymentAccounts: Array.isArray(state.paymentAccounts) ? state.paymentAccounts : demoState.paymentAccounts,
-    giftCodes: Array.isArray(state.giftCodes) ? state.giftCodes : demoState.giftCodes,
+    giftCodes: Array.isArray(state.giftCodes)
+      ? state.giftCodes.map((giftCode) => ({ ...giftCode, maxRedemptions: Math.max(1, Number(giftCode.maxRedemptions) || 50) }))
+      : demoState.giftCodes,
     users: Array.isArray(state.users) ? state.users.map((user) => ({ ...user, bankMethods: Array.isArray(user.bankMethods) ? user.bankMethods : [], blocked: user.blocked ?? false })) : demoState.users,
     investments: Array.isArray(state.investments) ? state.investments : [],
     recharges: Array.isArray(state.recharges) ? state.recharges : [],

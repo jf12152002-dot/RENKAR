@@ -226,6 +226,7 @@ async function ensureDb() {
         id text primary key,
         code text not null unique,
         amount numeric not null,
+        max_redemptions integer not null default 50,
         active boolean not null default true,
         created_at timestamptz not null
       );
@@ -265,6 +266,7 @@ async function ensureDb() {
     await pool.query(`
       alter table recharges alter column plan_id drop not null;
       alter table investments alter column recharge_id drop not null;
+      alter table gift_codes add column if not exists max_redemptions integer not null default 50;
     `);
     const count = await pool.query('select count(*)::int as count from users');
     if (count.rows[0].count === 0) await persistStateToPostgres(seedState);
@@ -438,6 +440,7 @@ async function loadStateFromPostgres() {
       id: row.id,
       code: row.code,
       amount: Number(row.amount),
+      maxRedemptions: Number(row.max_redemptions) || 50,
       active: row.active,
       createdAt: row.created_at.toISOString(),
       redeemedBy: redemptionsByCode[row.id] || []
@@ -526,8 +529,8 @@ async function persistStateToPostgres(state) {
     }
     for (const giftCode of state.giftCodes || []) {
       await client.query(
-        `insert into gift_codes (id, code, amount, active, created_at) values ($1,$2,$3,$4,$5)`,
-        [giftCode.id, giftCode.code, giftCode.amount, Boolean(giftCode.active), giftCode.createdAt]
+        `insert into gift_codes (id, code, amount, max_redemptions, active, created_at) values ($1,$2,$3,$4,$5,$6)`,
+        [giftCode.id, giftCode.code, giftCode.amount, Number(giftCode.maxRedemptions) || 50, Boolean(giftCode.active), giftCode.createdAt]
       );
       for (const userId of giftCode.redeemedBy || []) {
         await client.query(
@@ -704,6 +707,7 @@ function normalizeState(state) {
       id: String(giftCode.id || uid('gift')),
       code: String(giftCode.code || '').trim().toUpperCase(),
       amount: Number(giftCode.amount) || 0,
+      maxRedemptions: Math.max(1, Math.floor(Number(giftCode.maxRedemptions) || 50)),
       active: giftCode.active !== false,
       createdAt: giftCode.createdAt || new Date().toISOString(),
       redeemedBy: Array.isArray(giftCode.redeemedBy) ? giftCode.redeemedBy : []
@@ -1411,6 +1415,9 @@ app.post('/api/gift-codes/redeem', async (req, res) => {
   if (giftCode.redeemedBy.includes(currentUserId)) {
     return res.status(409).json({ message: 'Ya canjeaste este codigo anteriormente.' });
   }
+  if (giftCode.redeemedBy.length >= Number(giftCode.maxRedemptions || 50)) {
+    return res.status(409).json({ message: 'Este codigo ya alcanzo el limite de canjes disponibles.' });
+  }
   giftCode.redeemedBy.push(currentUserId);
   state.movements.unshift({
     id: uid('mov'),
@@ -1599,6 +1606,7 @@ app.patch('/api/admin/gift-codes', async (req, res) => {
       id: String(giftCode.id || uid('gift')),
       code,
       amount: Number(giftCode.amount) || 0,
+      maxRedemptions: Math.max(1, Math.floor(Number(giftCode.maxRedemptions) || 50)),
       active: Boolean(giftCode.active),
       createdAt: giftCode.createdAt || existing?.createdAt || new Date().toISOString(),
       redeemedBy: Array.isArray(existing?.redeemedBy) ? existing.redeemedBy : Array.isArray(giftCode.redeemedBy) ? giftCode.redeemedBy : []

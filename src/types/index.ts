@@ -111,6 +111,7 @@ export interface GiftCode {
   id: string;
   code: string;
   amount: number;
+  maxRedemptions: number;
   active: boolean;
   createdAt: string;
   redeemedBy: string[];
