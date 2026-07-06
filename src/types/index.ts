@@ -71,6 +71,7 @@ export interface Referral {
   registeredAt: string;
   status: ReferralStatus;
   investedAmount: number;
+  line?: 1 | 2 | 3;
 }
 
 export interface Movement {

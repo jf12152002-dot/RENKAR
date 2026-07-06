@@ -118,15 +118,21 @@ function buildNotifications(state: ReturnType<typeof useApp>['state'], userId?: 
   const bonusItems = userMovements
     .filter((item) => item.type.includes('Bono') && item.status === 'Acreditado')
     .slice(0, 3)
-    .map((item) => ({
-      id: `mov-${item.id}`,
-      title: item.type,
-      detail: `${money(item.amount)} acreditados a tu cuenta`,
-      createdAt: item.createdAt,
-      icon: Gift,
-      tone: 'emerald' as const,
-      tab: 'history' as Tab
-    }));
+    .map((item) => {
+      const referralLine = referralLineFromMovementId(item.id);
+      const isReferralBonus = item.type === 'Bono por referidos';
+      return {
+        id: `mov-${item.id}`,
+        title: isReferralBonus && referralLine ? `Bono Linea ${referralLine} acreditado` : item.type,
+        detail: isReferralBonus
+          ? `${money(item.amount)} por compra de plan de tu referido`
+          : `${money(item.amount)} acreditados a tu cuenta`,
+        createdAt: item.createdAt,
+        icon: Gift,
+        tone: 'emerald' as const,
+        tab: 'history' as Tab
+      };
+    });
 
   const staticItems: NotificationItem[] = [
     {
@@ -142,6 +148,10 @@ function buildNotifications(state: ReturnType<typeof useApp>['state'], userId?: 
   return [...rechargeItems, ...withdrawalItems, ...bonusItems, ...staticItems]
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 8);
+}
+
+function referralLineFromMovementId(id: string) {
+  return id.match(/line-(\d+)/)?.[1];
 }
 
 function NotificationsPanel({ items, onClose, onNotificationClick }: { items: NotificationItem[]; onClose: () => void; onNotificationClick: (item: NotificationItem) => void }) {

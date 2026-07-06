@@ -5,18 +5,28 @@ import { creditedReferralLineBonus, referralBonus } from '../utils/calculations'
 import { dateOnly, money } from '../utils/format';
 import { Badge, Button, Card, Stat } from '../components/ui';
 
+type LineFilter = 'all' | 1 | 2 | 3;
+const pageSize = 5;
+
 export function Referrals() {
   const { currentUser, state } = useApp();
   const [copied, setCopied] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [lineFilter, setLineFilter] = useState<LineFilter>('all');
+  const [page, setPage] = useState(1);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
+  const directReferrals = referrals.filter((item) => !item.line || item.line === 1);
+  const filteredReferrals = lineFilter === 'all' ? referrals : referrals.filter((item) => (item.line || 1) === lineFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredReferrals.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleReferrals = filteredReferrals.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
-  const active = referrals.filter((item) => item.status === 'Activo').length;
+  const active = directReferrals.filter((item) => item.status === 'Activo').length;
   const link = `https://renkarapp.com/register?code=${currentUser?.referralCode}`;
   const shareMessage = `Unete a RENKAR con mi codigo ${currentUser?.referralCode} y empieza a invertir desde RD$ 600. ${link}`;
   const progress = active % 5;
   const completedBlocks = Math.floor(active / 5);
-  const blockBonus = referralBonus(referrals);
+  const blockBonus = referralBonus(directReferrals);
   const lineBonus = creditedReferralLineBonus(movements);
 
   async function copy() {
@@ -63,7 +73,7 @@ export function Referrals() {
           </span>
           <div>
             <h2 className="font-black text-slate-900">Bonos por lineas</h2>
-            <p className="text-xs text-slate-500">Se acreditan automaticamente al aprobarse el pago del plan.</p>
+            <p className="text-xs text-slate-500">Se acreditan automaticamente cuando tus referidos compran planes.</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -86,17 +96,62 @@ export function Referrals() {
         <div className="mb-3 h-3 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-emerald-700" style={{ width: `${(progress / 5) * 100}%` }} />
         </div>
-        <h2 className="mb-3 font-bold">Lista de referidos ({referrals.length})</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Lista de referidos ({filteredReferrals.length})</h2>
+            <p className="text-xs font-semibold text-slate-400">
+              {lineFilter === 'all' ? 'Todas las lineas' : `Mostrando Linea ${lineFilter}`}
+            </p>
+          </div>
+          <Badge tone="neutral">Pag. {currentPage}/{totalPages}</Badge>
+        </div>
+        <div className="mb-3 grid grid-cols-4 gap-2">
+          {[
+            ['all', 'Todas'],
+            [1, 'L1'],
+            [2, 'L2'],
+            [3, 'L3']
+          ].map(([value, label]) => (
+            <button
+              key={String(value)}
+              onClick={() => {
+                setLineFilter(value as LineFilter);
+                setPage(1);
+              }}
+              className={`rounded-2xl px-2 py-2 text-xs font-black transition ${
+                lineFilter === value ? 'bg-emerald-700 text-white shadow-glow' : 'border border-slate-100 bg-white text-slate-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="space-y-3">
-          {referrals.map((referral) => (
+          {visibleReferrals.map((referral) => (
             <div key={referral.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold">{referral.name}</p>
-                <Badge tone={referral.status === 'Activo' ? 'ok' : 'warn'}>{referral.status}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge tone="neutral">Linea {referral.line || 1}</Badge>
+                  <Badge tone={referral.status === 'Activo' ? 'ok' : 'warn'}>{referral.status}</Badge>
+                </div>
               </div>
               <p className="mt-1 text-xs text-slate-400">{dateOnly(referral.registeredAt)} · Invertido {money(referral.investedAmount)}</p>
             </div>
           ))}
+          {!visibleReferrals.length && (
+            <p className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+              No hay referidos en esta linea.
+            </p>
+          )}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="ghost" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+            Anterior
+          </Button>
+          <Button variant="ghost" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+            Siguiente
+          </Button>
         </div>
       </Card>
     </div>

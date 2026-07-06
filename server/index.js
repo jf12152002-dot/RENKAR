@@ -567,6 +567,33 @@ function canManageSystem(user) {
   return hasRole(user, ['admin', 'supervisor']);
 }
 
+function referralTreeForUser(state, userId) {
+  const rows = [];
+  let parents = [userId];
+  for (let line = 1; line <= 3; line += 1) {
+    const users = state.users
+      .filter((user) => parents.includes(user.referredBy))
+      .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+    for (const user of users) {
+      const investedAmount = state.investments
+        .filter((investment) => investment.userId === user.id)
+        .reduce((sum, investment) => sum + Number(investment.amount), 0);
+      rows.push({
+        id: `line-${line}-${user.id}`,
+        userId,
+        name: user.name,
+        registeredAt: user.joinedAt,
+        status: investedAmount > 0 ? 'Activo' : 'Pendiente',
+        investedAmount,
+        line
+      });
+    }
+    parents = users.map((user) => user.id);
+    if (!parents.length) break;
+  }
+  return rows;
+}
+
 function clientState(state, currentUserId, extra = {}) {
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const isAdmin = ['admin', 'admin_recharges', 'admin_withdrawals', 'supervisor'].includes(currentUser?.role);
@@ -594,7 +621,7 @@ function clientState(state, currentUserId, extra = {}) {
     recharges: state.recharges.filter((item) => item.userId === currentUserId),
     withdrawals: state.withdrawals.filter((item) => item.userId === currentUserId),
     investments: state.investments.filter((item) => item.userId === currentUserId),
-    referrals: state.referrals.filter((item) => item.userId === currentUserId),
+    referrals: referralTreeForUser(state, currentUserId),
     movements: state.movements.filter((item) => item.userId === currentUserId),
     giftCodes: [],
     chat: state.chat.filter((item) => !item.userId || item.userId === currentUserId),
