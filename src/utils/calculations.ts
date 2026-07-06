@@ -2,6 +2,16 @@ import { Investment, Movement, Referral, WithdrawalRequest } from '../types';
 
 const dayMs = 86400000;
 
+export const referralCycleBonuses = [
+  { active: 5, amount: 100 },
+  { active: 15, amount: 250 },
+  { active: 30, amount: 500 },
+  { active: 45, amount: 650 },
+  { active: 60, amount: 800 },
+  { active: 80, amount: 1200 },
+  { active: 100, amount: 1800 }
+];
+
 export function daysSince(date: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / dayMs));
 }
@@ -17,8 +27,24 @@ export function accruedProfit(investments: Investment[]) {
 }
 
 export function referralBonus(referrals: Referral[]) {
-  const active = referrals.filter((referral) => referral.status === 'Activo').length;
-  return Math.floor(active / 5) * 100;
+  const active = referrals.filter((referral) => (!referral.line || referral.line === 1) && referral.status === 'Activo').length;
+  return referralCycleBonuses
+    .filter((cycle) => active >= cycle.active)
+    .reduce((sum, cycle) => sum + cycle.amount, 0);
+}
+
+export function activeDirectReferralCount(referrals: Referral[]) {
+  return referrals.filter((referral) => (!referral.line || referral.line === 1) && referral.status === 'Activo').length;
+}
+
+export function completedReferralCycles(referrals: Referral[]) {
+  const active = activeDirectReferralCount(referrals);
+  return referralCycleBonuses.filter((cycle) => active >= cycle.active);
+}
+
+export function nextReferralCycle(referrals: Referral[]) {
+  const active = activeDirectReferralCount(referrals);
+  return referralCycleBonuses.find((cycle) => active < cycle.active);
 }
 
 export function paidWithdrawals(withdrawals: WithdrawalRequest[]) {
@@ -51,12 +77,12 @@ export function creditedRegistrationBonus(movements: Movement[] = []) {
 
 export function creditedReferralLineBonus(movements: Movement[] = []) {
   return movements
-    .filter((movement) => movement.type === 'Bono por referidos' && movement.status === 'Acreditado')
+    .filter((movement) => movement.type === 'Bono por referidos' && movement.status === 'Acreditado' && movement.id.includes('-line-'))
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
 export function availableBalance(investments: Investment[], withdrawals: WithdrawalRequest[], referrals: Referral[], movements: Movement[] = []) {
-  return approvedDeposits(movements) + accruedProfit(investments) + referralBonus(referrals) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  return approvedDeposits(movements) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

@@ -1,6 +1,6 @@
 import { ArrowDownToLine, CalendarClock, CheckCircle2, Clock, History, Landmark, ShieldCheck, TrendingUp, UserRoundPlus, WalletCards } from 'lucide-react';
 import { useApp } from '../hooks/useApp';
-import { accruedProfit, availableBalance, creditedReferralLineBonus, paidWithdrawals, referralBonus } from '../utils/calculations';
+import { accruedProfit, availableBalance, creditedReferralLineBonus, completedReferralCycles, nextReferralCycle, paidWithdrawals, referralBonus, referralCycleBonuses } from '../utils/calculations';
 import { dateOnly, dateTime, money } from '../utils/format';
 import { Badge, Card, Stat } from '../components/ui';
 import { Tab } from '../components/BottomNav';
@@ -15,10 +15,16 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const activeInvestment = investments.reduce((sum, item) => sum + item.amount, 0);
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
   const totalProfit = accruedProfit(investments) + totalReferralBonus;
-  const activeReferrals = referrals.filter((item) => item.status === 'Activo').length;
-  const referralProgress = activeReferrals % 5;
-  const completedReferralBlocks = Math.floor(activeReferrals / 5);
-  const referralPercent = Math.min(100, (referralProgress / 5) * 100);
+  const directReferrals = referrals.filter((item) => !item.line || item.line === 1);
+  const activeReferrals = directReferrals.filter((item) => item.status === 'Activo').length;
+  const completedCycles = completedReferralCycles(directReferrals);
+  const nextCycle = nextReferralCycle(directReferrals);
+  const previousCycle = completedCycles[completedCycles.length - 1];
+  const progressStart = previousCycle?.active || 0;
+  const progressTarget = nextCycle?.active || referralCycleBonuses[referralCycleBonuses.length - 1].active;
+  const progressCurrent = Math.max(0, activeReferrals - progressStart);
+  const progressTotal = Math.max(1, progressTarget - progressStart);
+  const referralPercent = nextCycle ? Math.min(100, (progressCurrent / progressTotal) * 100) : 100;
   const chartItems = [
     { label: 'Inversión', value: activeInvestment, color: '#047857' },
     { label: 'Ganancias', value: accruedProfit(investments), color: '#16a34a' },
@@ -121,8 +127,10 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
             <h2 className="font-black text-slate-900">Referidos</h2>
           </div>
           <p className="text-sm font-black text-slate-900">{activeReferrals} activos</p>
-          <p className="mt-1 text-xs text-slate-500">{referralProgress}/5 para el proximo bono de $100</p>
-          <p className="mt-1 text-xs font-semibold text-amber-700">{completedReferralBlocks} grupos completados</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {nextCycle ? `${activeReferrals}/${nextCycle.active} para bono de ${money(nextCycle.amount)}` : 'Todas las metas completadas'}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">{completedCycles.length} metas completadas</p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-emerald-700" style={{ width: `${referralPercent}%` }} />
           </div>

@@ -1,7 +1,7 @@
 import { Copy, Send, Share2, Ticket, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { creditedReferralLineBonus, referralBonus } from '../utils/calculations';
+import { creditedReferralLineBonus, completedReferralCycles, nextReferralCycle, referralBonus, referralCycleBonuses } from '../utils/calculations';
 import { dateOnly, money } from '../utils/format';
 import { Badge, Button, Card, Stat } from '../components/ui';
 
@@ -24,10 +24,23 @@ export function Referrals() {
   const active = directReferrals.filter((item) => item.status === 'Activo').length;
   const link = `https://renkarapp.com/register?code=${currentUser?.referralCode}`;
   const shareMessage = `Unete a RENKAR con mi codigo ${currentUser?.referralCode} y empieza a invertir desde RD$ 600. ${link}`;
-  const progress = active % 5;
-  const completedBlocks = Math.floor(active / 5);
-  const blockBonus = referralBonus(directReferrals);
+  const completedCycles = completedReferralCycles(directReferrals);
+  const nextCycle = nextReferralCycle(directReferrals);
+  const previousCycle = completedCycles[completedCycles.length - 1];
+  const progressStart = previousCycle?.active || 0;
+  const progressTarget = nextCycle?.active || referralCycleBonuses[referralCycleBonuses.length - 1].active;
+  const progressCurrent = Math.max(0, active - progressStart);
+  const progressTotal = Math.max(1, progressTarget - progressStart);
+  const cycleProgress = nextCycle ? Math.min(100, (progressCurrent / progressTotal) * 100) : 100;
+  const cycleBonus = referralBonus(directReferrals);
   const lineBonus = creditedReferralLineBonus(movements);
+  const teamTotal = referrals.reduce((sum, referral) => sum + referral.investedAmount, 0);
+  const teamLineTotals = [1, 2, 3].map((line) => ({
+    line,
+    total: referrals
+      .filter((referral) => (referral.line || 1) === line)
+      .reduce((sum, referral) => sum + referral.investedAmount, 0)
+  }));
 
   async function copy() {
     await navigator.clipboard?.writeText(link);
@@ -43,7 +56,7 @@ export function Referrals() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-black">Referidos</h1>
-        <p className="text-sm text-slate-400">Gana bonos cuando tus referidos activan planes validados por administracion.</p>
+        <p className="text-sm text-slate-400">Gana bonos cuando tus referidos activos de Linea 1 completan ciclos y cuando tu red compra planes.</p>
       </div>
       <Card>
         <p className="text-xs text-slate-400">Tu enlace unico</p>
@@ -60,12 +73,28 @@ export function Referrals() {
       </Card>
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Referidos activos" value={`${active}`} accent="text-emerald-700" />
-        <Stat label="Proximo bono" value={`${progress}/5`} accent="text-amber-700" />
-        <Stat label="Grupos completados" value={`${completedBlocks}`} accent="text-sky-700" />
-        <Stat label="Bono 5 activos" value={money(blockBonus)} accent="text-emerald-700" />
+        <Stat label="Proxima meta" value={nextCycle ? `${active}/${nextCycle.active}` : 'Completadas'} accent="text-amber-700" />
+        <Stat label="Metas completadas" value={`${completedCycles.length}`} accent="text-sky-700" />
+        <Stat label="Bonos por ciclos" value={money(cycleBonus)} accent="text-emerald-700" />
         <Stat label="Bonos por lineas" value={money(lineBonus)} accent="text-emerald-700" />
-        <Stat label="Total ganado" value={money(blockBonus + lineBonus)} accent="text-emerald-700" />
+        <Stat label="Total ganado" value={money(cycleBonus + lineBonus)} accent="text-emerald-700" />
       </div>
+      <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-blue-700 p-4 text-white shadow-xl shadow-emerald-100">
+        <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-white/15 blur-3xl" />
+        <div className="relative">
+          <p className="text-xs font-black uppercase tracking-[.18em] text-white/75">Total de Equipo</p>
+          <h2 className="mt-2 text-3xl font-black tracking-[-.04em]">{money(teamTotal)}</h2>
+          <p className="mt-1 text-xs font-semibold text-white/75">Suma de planes comprados por tus Lineas 1, 2 y 3.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {teamLineTotals.map((item) => (
+              <div key={item.line} className="rounded-2xl border border-white/15 bg-white/15 p-3 text-center backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-wide text-white/70">Linea {item.line}</p>
+                <p className="mt-1 text-sm font-black">{money(item.total)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
       <Card>
         <div className="mb-3 flex items-center gap-2">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
@@ -89,12 +118,12 @@ export function Referrals() {
           ))}
         </div>
         <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-          Tambien recibes un pago unico de $100 por cada bloque de 5 referidos activos.
+          Bonos por ciclos de Linea 1: 5 activos $100, 15 activos $250, 30 activos $500, 45 activos $650, 60 activos $800, 80 activos $1,200 y 100 activos $1,800.
         </p>
       </Card>
       <Card>
         <div className="mb-3 h-3 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-emerald-700" style={{ width: `${(progress / 5) * 100}%` }} />
+          <div className="h-full rounded-full bg-emerald-700" style={{ width: `${cycleProgress}%` }} />
         </div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>

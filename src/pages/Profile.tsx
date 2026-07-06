@@ -279,7 +279,7 @@ export function Profile() {
                   <p>Los retiros se procesan diariamente de 10:00 AM a 5:00 PM, aplican una comision de retiro del 15% y pueden estar en estado Pendiente, Aprobado, Rechazado o Pagado.</p>
                   <p>Para solicitar retiros, el usuario debe tener al menos una recarga aprobada y haber comprado un plan. Luego podra retirar su balance disponible dentro del horario establecido.</p>
                   <p>Las solicitudes de inversion se reciben de 9:00 AM a 7:00 PM. Fuera de ese horario no se permite crear solicitudes.</p>
-                  <p>La bonificacion de referidos es un pago unico de $100 por cada bloque de 5 referidos activos.</p>
+                  <p>Los bonos por ciclos solo cuentan referidos activos de Linea 1: 5 activos $100, 15 activos $250, 30 activos $500, 45 activos $650, 60 activos $800, 80 activos $1,200 y 100 activos $1,800.</p>
                   <p>Los bonos por lineas se acreditan al aprobarse una inversion validada: Linea 1 15%, Linea 2 3% y Linea 3 2% del plan activado.</p>
                   <Button onClick={() => setPanel(null)} className="w-full">Entendido</Button>
                 </div>

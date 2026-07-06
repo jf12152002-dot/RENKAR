@@ -699,7 +699,7 @@ function normalizeState(state) {
     usedReferralCodes.add(String(nextUser.referralCode).toLowerCase());
     return nextUser;
   });
-  return {
+  const normalizedState = {
     ...seedState,
     ...state,
     movements: [...registrationBonuses, ...movements],
@@ -729,6 +729,8 @@ function normalizeState(state) {
         : account.accountNumber
     }))
   };
+  creditAllDirectReferralCycleBonuses(normalizedState);
+  return normalizedState;
 }
 
 function formatMoney(value) {
@@ -926,11 +928,8 @@ function daysSince(date) {
 function availableBalanceForUser(state, userId) {
   const investments = state.investments.filter((item) => item.userId === userId && item.active);
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
-  const referrals = state.referrals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
   const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
-  const activeReferrals = referrals.filter((item) => item.status === 'Activo').length;
-  const referralBonus = Math.floor(activeReferrals / 5) * 100;
   const approvedDeposits = movements
     .filter((item) => item.type === 'Deposito' && item.status === 'Aprobada')
     .reduce((sum, item) => sum + Number(item.amount), 0);
@@ -943,7 +942,7 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  return approvedDeposits + accrued + referralBonus + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
+  return approvedDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -997,6 +996,39 @@ function createMultilevelReferralBonuses(state, activatedUser, plan, rechargeId)
       });
     }
     currentUser = sponsor;
+  }
+}
+
+const directReferralCycleBonuses = [
+  { active: 5, amount: 100 },
+  { active: 15, amount: 250 },
+  { active: 30, amount: 500 },
+  { active: 45, amount: 650 },
+  { active: 60, amount: 800 },
+  { active: 80, amount: 1200 },
+  { active: 100, amount: 1800 }
+];
+
+function creditDirectReferralCycleBonuses(state, sponsorId) {
+  const directActiveReferrals = state.referrals.filter((referral) => referral.userId === sponsorId && referral.status === 'Activo').length;
+  for (const cycle of directReferralCycleBonuses) {
+    if (directActiveReferrals < cycle.active) continue;
+    const movementId = `mov-ref-cycle-${sponsorId}-${cycle.active}`;
+    if (state.movements.some((movement) => movement.id === movementId)) continue;
+    state.movements.unshift({
+      id: movementId,
+      userId: sponsorId,
+      type: 'Bono por referidos',
+      amount: cycle.amount,
+      status: 'Acreditado',
+      createdAt: new Date().toISOString()
+    });
+  }
+}
+
+function creditAllDirectReferralCycleBonuses(state) {
+  for (const user of state.users || []) {
+    creditDirectReferralCycleBonuses(state, user.id);
   }
 }
 
@@ -1328,6 +1360,7 @@ app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max:
       referral.status = 'Activo';
       referral.investedAmount = Number(referral.investedAmount || 0) + Number(plan.amount);
     }
+    creditDirectReferralCycleBonuses(state, user.referredBy);
   }
   createMultilevelReferralBonuses(state, user, plan, purchaseId);
   const nextState = await writeDb(state, currentUserId);
