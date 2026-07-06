@@ -31,6 +31,7 @@ interface AppContextValue {
   updateRecharge: (id: string, status: RechargeStatus) => Promise<void>;
   updateWithdrawal: (id: string, status: WithdrawalStatus) => Promise<void>;
   updateUserProfile: (payload: { bankMethods?: UserBankAccount[]; password?: string }) => Promise<void>;
+  updateUserPassword: (id: string, password: string) => Promise<void>;
   updateUserBlock: (id: string, blocked: boolean) => Promise<void>;
   updatePaymentAccounts: (paymentAccounts: PaymentAccount[]) => Promise<void>;
   updatePlans: (plans: InvestmentPlan[]) => Promise<void>;
@@ -132,6 +133,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async updateUserProfile(payload) {
       if (!currentUser) return;
       await run(() => api.updateUser(currentUser.id, payload));
+    },
+    async updateUserPassword(id, password) {
+      await run(() => api.updateUser(id, { password }));
     },
     async updateUserBlock(id, blocked) {
       await run(() => api.updateUserBlock(id, blocked));

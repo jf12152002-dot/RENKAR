@@ -10,7 +10,7 @@ type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
 const pageSizeOptions = [25, 50, 100];
 
 export function Admin() {
-  const { state, currentUser, updateRecharge, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updatePlans, updateGiftCodes } = useApp();
+  const { state, currentUser, updateRecharge, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, updateGiftCodes } = useApp();
   const [section, setSection] = useState<Section>('recargas-pendientes');
   const [voucher, setVoucher] = useState<RechargeRequest | null>(null);
   const [query, setQuery] = useState('');
@@ -167,6 +167,7 @@ export function Admin() {
           pageSize={pageSize}
           setPageSize={setPageSize}
           onBlock={updateUserBlock}
+          onPassword={updateUserPassword}
         />
       )}
       {section === 'inversiones' && <InvestmentsAdminTable items={state.investments} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} userName={userName} />}
@@ -414,7 +415,8 @@ function UsersAdminTable({
   setPage,
   pageSize,
   setPageSize,
-  onBlock
+  onBlock,
+  onPassword
 }: {
   items: User[];
   currentUserId: string;
@@ -425,7 +427,10 @@ function UsersAdminTable({
   pageSize: number;
   setPageSize: (value: number) => void;
   onBlock: (id: string, blocked: boolean) => Promise<void>;
+  onPassword: (id: string, password: string) => Promise<void>;
 }) {
+  const [passwordUserId, setPasswordUserId] = useState('');
+  const [passwordNotice, setPasswordNotice] = useState('');
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items
@@ -434,10 +439,26 @@ function UsersAdminTable({
   }, [items, query]);
   const paged = paginate(filtered, page, pageSize);
 
+  async function resetPassword(event: FormEvent<HTMLFormElement>, userId: string) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const password = String(data.get('password') || '');
+    if (password.length < 6) {
+      setPasswordNotice('La clave debe tener al menos 6 caracteres.');
+      return;
+    }
+    await onPassword(userId, password);
+    form.reset();
+    setPasswordUserId('');
+    setPasswordNotice('Clave actualizada correctamente.');
+  }
+
   return (
     <Card>
       <SimpleToolbar title="Usuarios registrados" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar nombre, telefono, rol o estado" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
-      <p className="mt-3 text-sm text-slate-400">Bloquea o desbloquea el acceso de cualquier usuario al sistema.</p>
+      <p className="mt-3 text-sm text-slate-400">Bloquea usuarios o restablece su clave sin ver la contraseña actual.</p>
+      {passwordNotice && <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{passwordNotice}</p>}
       <div className="mt-4 space-y-3">
         {paged.items.map((user) => {
           const isCurrentAdmin = user.id === currentUserId;
@@ -458,6 +479,25 @@ function UsersAdminTable({
               >
                 {isCurrentAdmin ? 'Tu cuenta admin' : user.blocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
               </Button>
+              {!isCurrentAdmin && (
+                <div className="mt-3">
+                  {passwordUserId === user.id ? (
+                    <form className="space-y-2 rounded-2xl border border-slate-100 bg-white p-3" onSubmit={(event) => void resetPassword(event, user.id)}>
+                      <Field label="Nueva clave">
+                        <input className={inputClass} name="password" type="password" minLength={6} placeholder="Minimo 6 caracteres" required />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button>Guardar clave</Button>
+                        <Button type="button" variant="ghost" onClick={() => setPasswordUserId('')}>Cancelar</Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <Button className="w-full" variant="ghost" onClick={() => { setPasswordNotice(''); setPasswordUserId(user.id); }}>
+                      Restablecer clave
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

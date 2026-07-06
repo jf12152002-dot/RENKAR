@@ -9,6 +9,7 @@ export function Withdraw() {
   const { currentUser, state, createWithdrawal } = useApp();
   const [sent, setSent] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const investments = state.investments.filter((item) => item.userId === currentUser?.id);
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
@@ -17,11 +18,16 @@ export function Withdraw() {
   const selectedAccount = userBankAccounts.find((account) => account.id === selectedAccountId) || userBankAccounts[0];
   const manualAccount = selectedAccountId === 'manual' || !selectedAccount;
   const hasApprovedRecharge = state.recharges.some((item) => item.userId === currentUser?.id && item.status === 'Aprobada');
+  const hasPurchasedPlan = investments.length > 0;
   const hasWithdrawalToday = withdrawals.some((item) => isSameDominicanDate(item.createdAt, new Date()));
   const balance = availableBalance(investments, withdrawals, referrals, movements);
   const withdrawScheduleOpen = isWithdrawalScheduleOpen();
   const minimumWithdrawalAmount = 200;
-  const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && !hasWithdrawalToday;
+  const withdrawalCommissionRate = 0.15;
+  const requestedAmount = Number(withdrawAmount) || 0;
+  const commissionAmount = Math.round(requestedAmount * withdrawalCommissionRate);
+  const netWithdrawalAmount = Math.max(0, requestedAmount - commissionAmount);
+  const canSubmit = balance >= minimumWithdrawalAmount && withdrawScheduleOpen && hasApprovedRecharge && hasPurchasedPlan && !hasWithdrawalToday;
 
   useEffect(() => {
     if (!selectedAccountId && userBankAccounts[0]) setSelectedAccountId(userBankAccounts[0].id);
@@ -40,6 +46,7 @@ export function Withdraw() {
       amount: Number(data.get('amount'))
     });
     setSent(true);
+    setWithdrawAmount('');
     form.reset();
   }
 
@@ -54,12 +61,17 @@ export function Withdraw() {
         <WithdrawStat label="Horario" value="10 AM - 5 PM" color="from-amber-400 to-orange-600" />
       </div>
       <p className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-        Para retirar es obligatorio tener al menos una recarga aprobada por administracion. El monto minimo de retiro es RD$200.
-        Los bonos, comisiones o referidos no habilitan retiros por si solos.
+        Para retirar es obligatorio tener al menos una recarga aprobada y haber comprado un plan. El monto minimo de retiro es RD$200.
+        Luego de comprar un plan, podras retirar tu balance disponible dentro del horario.
       </p>
       {!hasApprovedRecharge && (
         <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
           Retiro deshabilitado: necesitas realizar una recarga y que sea aprobada por administracion antes de poder solicitar retiros.
+        </p>
+      )}
+      {hasApprovedRecharge && !hasPurchasedPlan && (
+        <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+          Retiro deshabilitado: primero debes comprar un plan con tu balance disponible. Despues podras retirar sin problema.
         </p>
       )}
       {hasWithdrawalToday && (
@@ -114,7 +126,34 @@ export function Withdraw() {
               )}
             </Field>
           </div>
-          <Field label="Monto a retirar"><input className={inputClass} name="amount" required type="number" min={minimumWithdrawalAmount} max={Math.max(minimumWithdrawalAmount, balance)} /></Field>
+          <Field label="Monto a retirar">
+            <input
+              className={inputClass}
+              name="amount"
+              required
+              type="number"
+              min={minimumWithdrawalAmount}
+              max={Math.max(minimumWithdrawalAmount, balance)}
+              value={withdrawAmount}
+              onChange={(event) => setWithdrawAmount(event.target.value)}
+            />
+          </Field>
+          {requestedAmount > 0 && (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900">
+              <div className="flex items-center justify-between">
+                <span>Monto solicitado</span>
+                <strong>{money(requestedAmount)}</strong>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-amber-700">
+                <span>Comision 15%</span>
+                <strong>-{money(commissionAmount)}</strong>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-emerald-100 pt-2 text-base">
+                <span className="font-black">Monto a recibir</span>
+                <strong className="text-emerald-700">{money(netWithdrawalAmount)}</strong>
+              </div>
+            </div>
+          )}
           <Button disabled={!canSubmit} className="w-full">Solicitar retiro</Button>
         </form>
         {sent && <p className="mt-3 text-sm font-semibold text-emerald-700">Solicitud creada con estado Pendiente.</p>}

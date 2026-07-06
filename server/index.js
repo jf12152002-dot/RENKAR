@@ -42,6 +42,7 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+let postgresWriteQueue = Promise.resolve();
 
 app.use(cors({
   origin(origin, callback) {
@@ -50,6 +51,14 @@ app.use(cors({
   }
 }));
 app.use(express.json({ limit: '8mb' }));
+
+for (const method of ['get', 'post', 'patch', 'put', 'delete']) {
+  const original = app[method].bind(app);
+  app[method] = (...args) => original(...args.map((arg) => {
+    if (typeof arg !== 'function' || arg.length === 4) return arg;
+    return (req, res, next) => Promise.resolve(arg(req, res, next)).catch(next);
+  }));
+}
 
 function loadLocalEnv() {
   const envPath = path.join(rootDir, '.env');
@@ -282,11 +291,35 @@ async function writeDb(state, currentUserId = null) {
   const stored = { ...state, currentUserId: null };
   if (pool) {
     await ensureDb();
-    await persistStateToPostgres(stored);
+    const writeTask = postgresWriteQueue.then(() => persistStateToPostgresWithRetry(stored));
+    postgresWriteQueue = writeTask.catch(() => {});
+    await writeTask;
     return { ...stored, currentUserId };
   }
   await fs.writeFile(dbPath, JSON.stringify(stored, null, 2));
   return { ...stored, currentUserId };
+}
+
+function isRetryablePostgresWriteError(error) {
+  return ['40P01', '40001'].includes(error?.code);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function persistStateToPostgresWithRetry(state, maxAttempts = 4) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await persistStateToPostgres(state);
+      return;
+    } catch (error) {
+      if (!isRetryablePostgresWriteError(error) || attempt === maxAttempts) throw error;
+      const delay = 150 * attempt;
+      console.warn(`Postgres write retry ${attempt}/${maxAttempts} after ${error.code}: ${error.message}`);
+      await wait(delay);
+    }
+  }
 }
 
 async function loadStateFromPostgres() {
@@ -1006,13 +1039,18 @@ async function sendTelegramWithdrawalNotification({ withdrawal, user }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_WITHDRAWALS_CHAT_ID;
   if (!token || !chatId) return;
+  const requestedAmount = Number(withdrawal.amount) || 0;
+  const commissionAmount = Math.round(requestedAmount * 0.15);
+  const netAmount = Math.max(0, requestedAmount - commissionAmount);
 
   const text = [
     'Nueva solicitud de retiro',
     '',
     `Usuario: ${user.name}`,
     `Telefono: ${user.email}`,
-    `Monto: ${formatMoney(withdrawal.amount)}`,
+    `Monto: ${formatMoney(netAmount)}`,
+    `Monto solicitado: ${formatMoney(requestedAmount)}`,
+    `Comision 15%: ${formatMoney(commissionAmount)}`,
     `Banco: ${withdrawal.bank}`,
     `Titular: ${withdrawal.accountHolder}`,
     `Cuenta: ${withdrawal.accountNumber}`,
@@ -1304,6 +1342,12 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
       message: 'Para retirar debes tener al menos una recarga aprobada por administracion. Los bonos, comisiones o referidos no habilitan retiros por si solos.'
     });
   }
+  const hasPurchasedPlan = state.investments.some((item) => item.userId === currentUserId);
+  if (!hasPurchasedPlan) {
+    return res.status(403).json({
+      message: 'Para retirar primero debes comprar un plan con tu balance disponible. Despues podras retirar tu balance sin problema.'
+    });
+  }
   const todayKey = dominicanDateKey(new Date());
   const hasWithdrawalToday = state.withdrawals.some((item) => item.userId === currentUserId && dominicanDateKey(new Date(item.createdAt)) === todayKey);
   if (hasWithdrawalToday) {
@@ -1567,10 +1611,13 @@ app.patch('/api/admin/gift-codes', async (req, res) => {
 
 app.use((error, _req, res, next) => {
   if (!error) return next();
-  console.error('API error:', error.message);
+  console.error('API error:', error.code ? `${error.code} ${error.message}` : error.message);
   if (res.headersSent) return next(error);
   if (error.type === 'entity.too.large') {
     return res.status(413).json({ message: 'El comprobante es demasiado pesado. Sube una imagen mas liviana.' });
+  }
+  if (isRetryablePostgresWriteError(error)) {
+    return res.status(503).json({ message: 'El servidor esta procesando varias solicitudes. Intenta nuevamente.' });
   }
   return res.status(500).json({ message: 'Error de servidor.' });
 });
