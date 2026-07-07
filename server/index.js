@@ -612,7 +612,7 @@ function referralTreeForUser(state, userId) {
       .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
     for (const user of users) {
       const investedAmount = state.investments
-        .filter((investment) => investment.userId === user.id)
+        .filter((investment) => investment.userId === user.id && investment.active !== false)
         .reduce((sum, investment) => sum + Number(investment.amount), 0);
       rows.push({
         id: `line-${line}-${user.id}`,
@@ -1014,7 +1014,7 @@ const directReferralCycleBonuses = [
 ];
 
 function creditDirectReferralCycleBonuses(state, sponsorId) {
-  const directActiveReferrals = state.referrals.filter((referral) => referral.userId === sponsorId && referral.status === 'Activo').length;
+  const directActiveReferrals = directActiveReferralCount(state, sponsorId);
   for (const cycle of directReferralCycleBonuses) {
     if (directActiveReferrals < cycle.active) continue;
     const movementId = `mov-ref-cycle-${sponsorId}-${cycle.active}`;
@@ -1027,6 +1027,26 @@ function creditDirectReferralCycleBonuses(state, sponsorId) {
       status: 'Acreditado',
       createdAt: new Date().toISOString()
     });
+  }
+}
+
+function directActiveReferralCount(state, sponsorId) {
+  return state.users
+    .filter((user) => user.referredBy === sponsorId)
+    .filter((user) => state.investments.some((investment) => investment.userId === user.id && investment.active !== false))
+    .length;
+}
+
+function reconcileDirectReferralCycleBonuses(state, sponsorId) {
+  const directActiveReferrals = directActiveReferralCount(state, sponsorId);
+  for (const cycle of directReferralCycleBonuses) {
+    const movementId = `mov-ref-cycle-${sponsorId}-${cycle.active}`;
+    const movement = state.movements.find((item) => item.id === movementId);
+    if (movement && directActiveReferrals < cycle.active) {
+      movement.status = 'Rechazada';
+      movement.note = 'Bono revertido por ajuste de planes activos';
+      movement.updatedAt = new Date().toISOString();
+    }
   }
 }
 
@@ -1449,15 +1469,25 @@ app.post('/api/gift-codes/redeem', async (req, res) => {
   if (!giftCode || !giftCode.active) {
     return res.status(404).json({ message: 'Este codigo no existe o no esta disponible.' });
   }
-  if (giftCode.redeemedBy.includes(currentUserId)) {
+  giftCode.redeemedBy = Array.isArray(giftCode.redeemedBy) ? giftCode.redeemedBy : [];
+  const redemptionMovementId = `mov-gift-${giftCode.id}-${currentUserId}`;
+  const existingRedemptionMovement = state.movements.some((movement) => movement.id === redemptionMovementId);
+  if (giftCode.redeemedBy.includes(currentUserId) || existingRedemptionMovement) {
+    if (!giftCode.redeemedBy.includes(currentUserId)) {
+      giftCode.redeemedBy.push(currentUserId);
+      await writeDb(state, currentUserId);
+    }
     return res.status(409).json({ message: 'Ya canjeaste este codigo anteriormente.' });
   }
   if (giftCode.redeemedBy.length >= Number(giftCode.maxRedemptions || 50)) {
     return res.status(409).json({ message: 'Este codigo ya alcanzo el limite de canjes disponibles.' });
   }
+  if (Number(giftCode.amount) <= 0) {
+    return res.status(400).json({ message: 'Este codigo no tiene un monto valido.' });
+  }
   giftCode.redeemedBy.push(currentUserId);
   state.movements.unshift({
-    id: uid('mov'),
+    id: redemptionMovementId,
     userId: currentUserId,
     type: 'Bono de regalo',
     amount: Number(giftCode.amount),
@@ -1708,6 +1738,10 @@ app.patch('/api/admin/investments/:id/remove', async (req, res) => {
     status: 'Plan quitado por administracion',
     createdAt: now
   });
+  const investmentUser = state.users.find((user) => user.id === investment.userId);
+  if (investmentUser?.referredBy) {
+    reconcileDirectReferralCycleBonuses(state, investmentUser.referredBy);
+  }
 
   const nextState = await writeDb(state, currentUserId);
   await logAdminAction(state, currentUserId, 'remove_investment', 'investment', investment.id, {

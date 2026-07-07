@@ -12,6 +12,7 @@ export function Profile() {
   const { currentUser, state, logout, updateUserProfile, redeemGiftCode } = useApp();
   const [panel, setPanel] = useState<ProfilePanel>(null);
   const [notice, setNotice] = useState('');
+  const [redeemingGift, setRedeemingGift] = useState(false);
   const [showBankForm, setShowBankForm] = useState(false);
   const [notifications, setNotifications] = useState({
     recharges: true,
@@ -27,6 +28,10 @@ export function Profile() {
   const activePaymentAccounts = (state.paymentAccounts || []).filter((account) => account.active);
   const userBankAccounts = currentUser?.bankMethods || [];
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
+  const noticeIsError = /no|ya|debe|coinciden|completa|escribe|existe|limite/i.test(notice);
+  const noticeClass = noticeIsError
+    ? 'border-rose-100 bg-rose-50 text-rose-700'
+    : 'border-emerald-100 bg-emerald-50 text-emerald-800';
 
   const rows = [
     {
@@ -100,6 +105,7 @@ export function Profile() {
 
   async function redeemCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setNotice('');
     const form = event.currentTarget;
     const data = new FormData(form);
     const code = String(data.get('giftCode') || '').trim().toUpperCase();
@@ -107,6 +113,7 @@ export function Profile() {
       setNotice('Escribe un codigo de regalo valido.');
       return;
     }
+    setRedeemingGift(true);
     try {
       await redeemGiftCode(code);
       setNotice('Codigo canjeado correctamente. El bono fue acreditado a tu cuenta.');
@@ -114,6 +121,8 @@ export function Profile() {
       setPanel(null);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'No se pudo canjear el codigo.');
+    } finally {
+      setRedeemingGift(false);
     }
   }
 
@@ -137,7 +146,7 @@ export function Profile() {
         <ProfileStat label="Total retirado" value={money(paidWithdrawals(withdrawals))} color="from-amber-400 to-orange-600" />
         <ProfileStat label="Referidos totales" value={String(referrals.length)} color="from-fuchsia-500 to-violet-700" />
       </div>
-      {notice && <p className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+      {notice && !panel && <p className={`rounded-2xl border p-3 text-sm font-semibold ${noticeClass}`}>{notice}</p>}
       <Card>
         <div className="space-y-3">
           {rows.map((row) => {
@@ -169,6 +178,11 @@ export function Profile() {
               <button onClick={() => setPanel(null)} className="rounded-full bg-slate-100 p-2 text-slate-600"><X className="h-4 w-4" /></button>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-8">
+              {notice && (
+                <p className={`mb-3 rounded-2xl border p-3 text-sm font-semibold ${noticeClass}`}>
+                  {notice}
+                </p>
+              )}
               {panel === 'payments' && (
                 <div className="space-y-3">
                   <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -252,9 +266,9 @@ export function Profile() {
                     Ingresa tu codigo de regalo. Si esta activo y no lo has usado antes, el bono se acreditara automaticamente a tu balance.
                   </p>
                   <Field label="Codigo de regalo">
-                    <input className={inputClass} name="giftCode" placeholder="RENKAR200" autoCapitalize="characters" required />
+                    <input className={inputClass} name="giftCode" placeholder="QWERTJGH" autoCapitalize="characters" required />
                   </Field>
-                  <Button className="w-full">Canjear codigo</Button>
+                  <Button className="w-full" disabled={redeemingGift}>{redeemingGift ? 'Canjeando...' : 'Canjear codigo'}</Button>
                 </form>
               )}
               {panel === 'notifications' && (

@@ -7,7 +7,7 @@ import { Tab } from '../components/BottomNav';
 
 export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const { currentUser, state } = useApp();
-  const investments = state.investments.filter((item) => item.userId === currentUser?.id);
+  const investments = state.investments.filter((item) => item.userId === currentUser?.id && item.active !== false);
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
