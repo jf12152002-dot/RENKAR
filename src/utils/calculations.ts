@@ -93,7 +93,8 @@ export function availableBalance(
   movements: Movement[] = [],
   recharges: RechargeRequest[] = []
 ) {
-  return approvedDeposits(movements, recharges) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  const balance = approvedDeposits(movements, recharges) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  return Math.max(0, balance);
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

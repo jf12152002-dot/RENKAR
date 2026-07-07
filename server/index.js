@@ -942,7 +942,8 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  return approvedDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
+  const balance = approvedDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
+  return Math.max(0, balance);
 }
 
 function withdrawableBalanceForUser(state, userId) {
