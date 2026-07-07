@@ -29,6 +29,7 @@ interface AppContextValue {
     amount: number;
   }) => Promise<void>;
   updateRecharge: (id: string, status: RechargeStatus) => Promise<void>;
+  adminCreditBalance: (userId: string, amount: number) => Promise<void>;
   updateWithdrawal: (id: string, status: WithdrawalStatus) => Promise<void>;
   updateUserProfile: (payload: { bankMethods?: UserBankAccount[]; password?: string }) => Promise<void>;
   updateUserPassword: (id: string, password: string) => Promise<void>;
@@ -128,6 +129,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     async updateRecharge(id, status) {
       await run(() => api.updateRecharge(id, status));
+    },
+    async adminCreditBalance(userId, amount) {
+      await run(() => api.adminCreditBalance(userId, amount));
     },
     async updateWithdrawal(id, status) {
       await run(() => api.updateWithdrawal(id, status));

@@ -1490,6 +1490,48 @@ app.patch('/api/recharges/:id', async (req, res) => {
   res.json(clientState(nextState, currentUserId));
 });
 
+app.post('/api/admin/credit-balance', async (req, res) => {
+  const currentUserId = clientId(req);
+  const state = await readDb();
+  const currentUser = requireActiveUser(state, currentUserId, res);
+  if (!currentUser) return;
+  if (!canManageRecharges(currentUser)) {
+    return res.status(403).json({ message: 'No tienes permiso para recargar balances.' });
+  }
+  const targetUser = state.users.find((user) => user.id === req.body.userId);
+  if (!targetUser) return res.status(404).json({ message: 'Usuario no encontrado.' });
+  const amount = Number(req.body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ message: 'Ingresa un monto valido para recargar.' });
+  }
+  const now = new Date().toISOString();
+  const recharge = {
+    id: uid('rec'),
+    userId: targetUser.id,
+    planId: null,
+    bankName: 'Recarga administrativa',
+    referenceNumber: `ADMIN-${currentUserId.slice(0, 8)}`,
+    amount,
+    transferDate: now.slice(0, 10),
+    receiptName: 'Recarga manual desde admin',
+    receiptDataUrl: '',
+    status: 'Aprobada',
+    createdAt: now
+  };
+  state.recharges.unshift(recharge);
+  state.movements.unshift({
+    id: `mov-${recharge.id}`,
+    userId: targetUser.id,
+    type: 'Deposito',
+    amount,
+    status: 'Aprobada',
+    createdAt: now
+  });
+  const nextState = await writeDb(state, currentUserId);
+  await logAdminAction(state, currentUserId, 'credit_balance', 'user', targetUser.id, { amount });
+  res.json(clientState(nextState, currentUserId));
+});
+
 app.patch('/api/withdrawals/:id', async (req, res) => {
   const currentUserId = clientId(req);
   const state = await readDb();

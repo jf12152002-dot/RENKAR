@@ -80,6 +80,12 @@ export const api = {
       body: JSON.stringify({ status, currentUserId: currentUserId() })
     });
   },
+  adminCreditBalance(userId: string, amount: number) {
+    return request<AppState>('/api/admin/credit-balance', {
+      method: 'POST',
+      body: JSON.stringify({ userId, amount, currentUserId: currentUserId() })
+    });
+  },
   updateWithdrawal(id: string, status: WithdrawalStatus) {
     return request<AppState>(`/api/withdrawals/${id}`, {
       method: 'PATCH',

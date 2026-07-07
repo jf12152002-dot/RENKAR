@@ -5,12 +5,12 @@ import { GiftCode, Investment, InvestmentPlan, Movement, PaymentAccount, Recharg
 import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 import { dateOnly, dateTime, money } from '../utils/format';
 
-type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'inversiones' | 'referidos' | 'historial';
+type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'inversiones' | 'referidos' | 'historial';
 type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
 const pageSizeOptions = [25, 50, 100];
 
 export function Admin() {
-  const { state, currentUser, updateRecharge, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, updateGiftCodes } = useApp();
+  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, updateGiftCodes } = useApp();
   const [section, setSection] = useState<Section>('recargas-pendientes');
   const [voucher, setVoucher] = useState<RechargeRequest | null>(null);
   const [query, setQuery] = useState('');
@@ -24,7 +24,7 @@ export function Admin() {
   const canWithdrawals = ['admin', 'admin_withdrawals', 'supervisor'].includes(role);
   const canSystem = ['admin', 'supervisor'].includes(role);
   const sections: Section[] = [
-    ...(canRecharges ? ['recargas-pendientes', 'recargas-procesadas'] as Section[] : []),
+    ...(canRecharges ? ['recargas-pendientes', 'recargas-procesadas', 'recargar-usuarios'] as Section[] : []),
     ...(canWithdrawals ? ['retiros-pendientes', 'retiros-procesados'] as Section[] : []),
     ...(canSystem ? ['planes', 'bonos', 'cuentas', 'usuarios', 'inversiones', 'referidos', 'historial'] as Section[] : [])
   ];
@@ -91,6 +91,19 @@ export function Admin() {
           userById={userById}
           onVoucher={setVoucher}
           onUpdate={updateRecharge}
+        />
+      )}
+
+      {section === 'recargar-usuarios' && (
+        <CreditBalanceAdminTable
+          users={state.users}
+          query={query}
+          setQuery={setQuery}
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          onCredit={adminCreditBalance}
         />
       )}
 
@@ -414,6 +427,108 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
           <Button>Guardar bonos</Button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+function CreditBalanceAdminTable({
+  users,
+  query,
+  setQuery,
+  page,
+  setPage,
+  pageSize,
+  setPageSize,
+  onCredit
+}: {
+  users: User[];
+  query: string;
+  setQuery: (value: string) => void;
+  page: number;
+  setPage: (value: number) => void;
+  pageSize: number;
+  setPageSize: (value: number) => void;
+  onCredit: (userId: string, amount: number) => Promise<void>;
+}) {
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return users
+      .filter((user) => user.role === 'user')
+      .filter((user) => !needle || [user.name, user.email, user.blocked ? 'bloqueado' : 'activo'].join(' ').toLowerCase().includes(needle))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [users, query]);
+  const paged = paginate(filtered, page, pageSize);
+  const selectedUser = users.find((user) => user.id === selectedUserId);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice('');
+    setError('');
+    const value = Number(amount);
+    if (!selectedUserId) {
+      setError('Selecciona el usuario al que deseas recargar.');
+      return;
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      setError('Ingresa un monto valido para recargar.');
+      return;
+    }
+    await onCredit(selectedUserId, value);
+    setNotice(`Balance recargado correctamente a ${selectedUser?.name || 'usuario'} por ${money(value)}.`);
+    setAmount('');
+  }
+
+  return (
+    <Card>
+      <SimpleToolbar title="Recargar balance de usuario" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar por nombre o telefono" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
+      <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+        Esta accion acredita una recarga aprobada directamente al balance del usuario y queda registrada en su historial como deposito.
+      </p>
+      {notice && <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{notice}</p>}
+      {error && <p className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
+      <form className="mt-4 space-y-3" onSubmit={submit}>
+        <Field label="Usuario seleccionado">
+          <select className={inputClass} value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)} required>
+            <option value="">Selecciona un usuario</option>
+            {filtered.map((user) => (
+              <option key={user.id} value={user.id}>{user.name} · {user.email}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Monto a recargar">
+          <input className={inputClass} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min="1" step="1" placeholder="Ej. 3500" required />
+        </Field>
+        <Button className="w-full">Agregar balance</Button>
+      </form>
+      <div className="mt-5 space-y-3">
+        {paged.items.map((user) => (
+          <button
+            key={user.id}
+            onClick={() => {
+              setSelectedUserId(user.id);
+              setNotice('');
+              setError('');
+            }}
+            className={`w-full rounded-2xl border p-3 text-left transition ${
+              selectedUserId === user.id ? 'border-emerald-200 bg-emerald-50 shadow-sm' : 'border-slate-100 bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-bold text-slate-950">{user.name}</p>
+                <p className="truncate text-xs text-slate-500">{user.email}</p>
+              </div>
+              <Badge tone={user.blocked ? 'danger' : 'ok'}>{user.blocked ? 'Bloqueado' : 'Activo'}</Badge>
+            </div>
+          </button>
+        ))}
+        {!paged.items.length && <EmptyState />}
+      </div>
+      <Pagination page={page} totalPages={paged.totalPages} setPage={setPage} />
     </Card>
   );
 }
@@ -917,6 +1032,7 @@ function sectionLabel(section: Section) {
   const labels: Record<Section, string> = {
     'recargas-pendientes': 'Recargas pendientes',
     'recargas-procesadas': 'Recargas procesadas',
+    'recargar-usuarios': 'Recargar usuarios',
     'retiros-pendientes': 'Retiros pendientes',
     'retiros-procesados': 'Retiros procesados',
     planes: 'Planes',
