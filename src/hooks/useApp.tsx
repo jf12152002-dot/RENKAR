@@ -36,6 +36,7 @@ interface AppContextValue {
   updateUserBlock: (id: string, blocked: boolean) => Promise<void>;
   updatePaymentAccounts: (paymentAccounts: PaymentAccount[]) => Promise<void>;
   updatePlans: (plans: InvestmentPlan[]) => Promise<void>;
+  removeInvestment: (id: string) => Promise<void>;
   updateGiftCodes: (giftCodes: GiftCode[]) => Promise<void>;
   redeemGiftCode: (code: string) => Promise<void>;
   sendChat: (text: string) => Promise<void>;
@@ -151,6 +152,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     async updatePlans(plans) {
       await run(() => api.updatePlans(plans));
+    },
+    async removeInvestment(id) {
+      await run(() => api.removeInvestment(id));
     },
     async updateGiftCodes(giftCodes) {
       await run(() => api.updateGiftCodes(giftCodes));

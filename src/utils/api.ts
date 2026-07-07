@@ -116,6 +116,12 @@ export const api = {
       body: JSON.stringify({ plans, currentUserId: currentUserId() })
     });
   },
+  removeInvestment(id: string) {
+    return request<AppState>(`/api/admin/investments/${id}/remove`, {
+      method: 'PATCH',
+      body: JSON.stringify({ currentUserId: currentUserId() })
+    });
+  },
   updateGiftCodes(giftCodes: GiftCode[]) {
     return request<AppState>('/api/admin/gift-codes', {
       method: 'PATCH',

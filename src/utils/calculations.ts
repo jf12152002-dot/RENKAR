@@ -68,6 +68,18 @@ export function approvedDeposits(movements: Movement[] = [], recharges: Recharge
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
+export function approvedRegularDeposits(recharges: RechargeRequest[] = []) {
+  return recharges
+    .filter((recharge) => recharge.status === 'Aprobada' && recharge.bankName !== 'Recarga administrativa')
+    .reduce((sum, recharge) => sum + recharge.amount, 0);
+}
+
+export function approvedAdminDeposits(recharges: RechargeRequest[] = []) {
+  return recharges
+    .filter((recharge) => recharge.status === 'Aprobada' && recharge.bankName === 'Recarga administrativa')
+    .reduce((sum, recharge) => sum + recharge.amount, 0);
+}
+
 export function debitedPlanPurchases(movements: Movement[] = []) {
   return movements
     .filter((movement) => movement.type === 'Compra de plan' && !movement.status.includes('Rechaz'))
@@ -93,8 +105,10 @@ export function availableBalance(
   movements: Movement[] = [],
   recharges: RechargeRequest[] = []
 ) {
-  const balance = approvedDeposits(movements, recharges) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
-  return Math.max(0, balance);
+  const regularDeposits = recharges.length ? approvedRegularDeposits(recharges) : approvedDeposits(movements, recharges);
+  const adminDeposits = approvedAdminDeposits(recharges);
+  const balanceBeforeAdminAdjustments = regularDeposits + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

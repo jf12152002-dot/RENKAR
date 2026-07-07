@@ -5,12 +5,12 @@ import { GiftCode, Investment, InvestmentPlan, Movement, PaymentAccount, Recharg
 import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 import { dateOnly, dateTime, money } from '../utils/format';
 
-type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'inversiones' | 'referidos' | 'historial';
+type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'quitar-planes' | 'inversiones' | 'referidos' | 'historial';
 type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
 const pageSizeOptions = [25, 50, 100];
 
 export function Admin() {
-  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, updateGiftCodes } = useApp();
+  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, removeInvestment, updateGiftCodes } = useApp();
   const [section, setSection] = useState<Section>('recargas-pendientes');
   const [voucher, setVoucher] = useState<RechargeRequest | null>(null);
   const [query, setQuery] = useState('');
@@ -26,7 +26,7 @@ export function Admin() {
   const sections: Section[] = [
     ...(canRecharges ? ['recargas-pendientes', 'recargas-procesadas', 'recargar-usuarios'] as Section[] : []),
     ...(canWithdrawals ? ['retiros-pendientes', 'retiros-procesados'] as Section[] : []),
-    ...(canSystem ? ['planes', 'bonos', 'cuentas', 'usuarios', 'inversiones', 'referidos', 'historial'] as Section[] : [])
+    ...(canSystem ? ['planes', 'bonos', 'cuentas', 'usuarios', 'quitar-planes', 'inversiones', 'referidos', 'historial'] as Section[] : [])
   ];
   const pendingRecharges = state.recharges.filter((item) => item.status === 'Pendiente de validacion').length;
   const pendingWithdrawals = state.withdrawals.filter((item) => item.status === 'Pendiente').length;
@@ -181,6 +181,21 @@ export function Admin() {
           setPageSize={setPageSize}
           onBlock={updateUserBlock}
           onPassword={updateUserPassword}
+        />
+      )}
+      {section === 'quitar-planes' && (
+        <InvestmentsAdminTable
+          title="Quitar planes"
+          description="Desactiva planes comprados y corrige el descuento del balance cuando una cuenta quedo en deficit."
+          items={state.investments}
+          query={query}
+          setQuery={setQuery}
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          userName={userName}
+          onRemove={removeInvestment}
         />
       )}
       {section === 'inversiones' && <InvestmentsAdminTable items={state.investments} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} userName={userName} />}
@@ -635,7 +650,9 @@ function UsersAdminTable({
   );
 }
 
-function InvestmentsAdminTable({ items, query, setQuery, page, setPage, pageSize, setPageSize, userName }: {
+function InvestmentsAdminTable({ title = 'Inversiones activas', description, items, query, setQuery, page, setPage, pageSize, setPageSize, userName, onRemove }: {
+  title?: string;
+  description?: string;
   items: Investment[];
   query: string;
   setQuery: (value: string) => void;
@@ -644,7 +661,11 @@ function InvestmentsAdminTable({ items, query, setQuery, page, setPage, pageSize
   pageSize: number;
   setPageSize: (value: number) => void;
   userName: (id: string) => string;
+  onRemove?: (id: string) => Promise<void>;
 }) {
+  const [removingId, setRemovingId] = useState('');
+  const [notice, setNotice] = useState('');
+  const [removeError, setRemoveError] = useState('');
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return items
@@ -653,14 +674,50 @@ function InvestmentsAdminTable({ items, query, setQuery, page, setPage, pageSize
   }, [items, query, userName]);
   const paged = paginate(filtered, page, pageSize);
 
+  async function removePlan(inv: Investment) {
+    if (!onRemove || inv.active === false) return;
+    const confirmed = window.confirm(`Quieres quitar el plan de ${userName(inv.userId)} por ${money(inv.amount)}? Esta compra dejara de descontar balance y el plan quedara inactivo.`);
+    if (!confirmed) return;
+    setNotice('');
+    setRemoveError('');
+    setRemovingId(inv.id);
+    try {
+      await onRemove(inv.id);
+      setNotice('Plan quitado correctamente. La compra ya no descuenta balance y el plan quedo inactivo.');
+    } catch (error) {
+      setRemoveError(error instanceof Error ? error.message : 'No se pudo quitar el plan.');
+    } finally {
+      setRemovingId('');
+    }
+  }
+
   return (
     <Card>
-      <SimpleToolbar title="Inversiones activas" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar usuario, monto, ganancia o fecha" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
+      <SimpleToolbar title={title} count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar usuario, monto, ganancia o fecha" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
+      {description && <p className="mt-3 text-sm text-slate-500">{description}</p>}
+      {notice && <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{notice}</div>}
+      {removeError && <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{removeError}</div>}
       <div className="mt-4 space-y-2">
         {paged.items.map((inv) => (
           <div key={inv.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-600">
-            <p className="font-bold text-slate-900">{userName(inv.userId)} · {money(inv.amount)}</p>
-            <p className="text-xs text-slate-500">{money(inv.dailyProfit)} diario · {inv.durationDays || 30} dias · {dateOnly(inv.startedAt)}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-slate-900">{userName(inv.userId)} · {money(inv.amount)}</p>
+                <p className="text-xs text-slate-500">{money(inv.dailyProfit)} diario · {inv.durationDays || 30} dias · {dateOnly(inv.startedAt)}</p>
+              </div>
+              <Badge tone={inv.active === false ? 'danger' : 'ok'}>{inv.active === false ? 'Quitado' : 'Activo'}</Badge>
+            </div>
+            {onRemove && (
+              <Button
+                type="button"
+                variant="danger"
+                className="mt-3 w-full"
+                disabled={inv.active === false || removingId === inv.id}
+                onClick={() => void removePlan(inv)}
+              >
+                {removingId === inv.id ? 'Quitando...' : inv.active === false ? 'Plan quitado' : 'Quitar plan'}
+              </Button>
+            )}
           </div>
         ))}
         {!paged.items.length && <EmptyState />}
@@ -1039,6 +1096,7 @@ function sectionLabel(section: Section) {
     bonos: 'Bonos',
     cuentas: 'Cuentas',
     usuarios: 'Usuarios',
+    'quitar-planes': 'Quitar planes',
     inversiones: 'Inversiones',
     referidos: 'Referidos',
     historial: 'Historial'

@@ -930,8 +930,11 @@ function availableBalanceForUser(state, userId) {
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
   const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
-  const approvedDeposits = state.recharges
-    .filter((item) => item.userId === userId && item.status === 'Aprobada')
+  const approvedRegularDeposits = state.recharges
+    .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName !== 'Recarga administrativa')
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  const adminDeposits = state.recharges
+    .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName === 'Recarga administrativa')
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const planPurchases = movements
     .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
@@ -942,8 +945,8 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balance = approvedDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
-  return Math.max(0, balance);
+  const balanceBeforeAdminAdjustments = approvedRegularDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -1323,7 +1326,7 @@ app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max:
   if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para comprar planes es de 9:00 AM a 7:00 PM.')) return;
   const plan = state.plans.find((item) => item.id === req.body.planId) || plans.find((item) => item.id === req.body.planId);
   if (!plan) return res.status(400).json({ message: 'Selecciona un plan valido.' });
-  const purchasesCount = state.investments.filter((item) => item.userId === currentUserId && item.planId === plan.id).length;
+  const purchasesCount = state.investments.filter((item) => item.userId === currentUserId && item.planId === plan.id && item.active !== false).length;
   if (purchasesCount >= 2) {
     return res.status(409).json({ message: 'Ya compraste este plan 2 veces. Selecciona otro plan disponible.' });
   }
@@ -1380,7 +1383,7 @@ app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPr
       message: 'Para retirar debes tener al menos una recarga aprobada por administracion. Los bonos, comisiones o referidos no habilitan retiros por si solos.'
     });
   }
-  const hasPurchasedPlan = state.investments.some((item) => item.userId === currentUserId);
+  const hasPurchasedPlan = state.investments.some((item) => item.userId === currentUserId && item.active !== false);
   if (!hasPurchasedPlan) {
     return res.status(403).json({
       message: 'Para retirar primero debes comprar un plan con tu balance disponible. Despues podras retirar tu balance sin problema.'
@@ -1660,6 +1663,58 @@ app.patch('/api/admin/plans', async (req, res) => {
   }).filter((plan) => plan.id && plan.name && plan.amount > 0 && plan.roiPercent > 0);
   const nextState = await writeDb(state, currentUserId);
   await logAdminAction(state, currentUserId, 'update_plans', 'plans', null, { count: state.plans.length });
+  res.json(clientState(nextState, currentUserId));
+});
+
+app.patch('/api/admin/investments/:id/remove', async (req, res) => {
+  const currentUserId = clientId(req);
+  const state = await readDb();
+  if (!requireActiveUser(state, currentUserId, res)) return;
+  const currentUser = state.users.find((user) => user.id === currentUserId);
+  if (!canManageSystem(currentUser)) {
+    return res.status(403).json({ message: 'Solo administracion puede quitar planes.' });
+  }
+  const investment = state.investments.find((item) => item.id === req.params.id);
+  if (!investment) return res.status(404).json({ message: 'Plan comprado no encontrado.' });
+  if (investment.active === false) {
+    return res.status(400).json({ message: 'Este plan ya fue quitado.' });
+  }
+
+  const now = new Date().toISOString();
+  investment.active = false;
+  investment.removedAt = now;
+  investment.removedBy = currentUserId;
+
+  const purchaseMovementIds = [`mov-purchase-${investment.id}`, `mov-${investment.id}`];
+  state.movements = state.movements.map((movement) => {
+    const isPlanPurchase = movement.userId === investment.userId
+      && movement.type === 'Compra de plan'
+      && purchaseMovementIds.includes(movement.id);
+    const isReferralBonus = String(movement.id || '').startsWith(`mov-ref-purchase-${investment.id}-`);
+    if (!isPlanPurchase && !isReferralBonus) return movement;
+    return {
+      ...movement,
+      status: 'Rechazada',
+      note: 'Plan quitado por administracion',
+      updatedAt: now
+    };
+  });
+
+  state.movements.unshift({
+    id: uid('mov'),
+    userId: investment.userId,
+    type: 'Ajuste administrativo',
+    amount: 0,
+    status: 'Plan quitado por administracion',
+    createdAt: now
+  });
+
+  const nextState = await writeDb(state, currentUserId);
+  await logAdminAction(state, currentUserId, 'remove_investment', 'investment', investment.id, {
+    userId: investment.userId,
+    amount: investment.amount,
+    planId: investment.planId
+  });
   res.json(clientState(nextState, currentUserId));
 });
 
