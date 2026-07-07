@@ -4,6 +4,7 @@ import { banks } from '../data/banks';
 import { GiftCode, Investment, InvestmentPlan, Movement, PaymentAccount, RechargeRequest, RechargeStatus, Referral, Role, User, WithdrawalRequest, WithdrawalStatus } from '../types';
 import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 import { dateOnly, dateTime, money } from '../utils/format';
+import { availableBalance } from '../utils/calculations';
 
 type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'quitar-planes' | 'inversiones' | 'referidos' | 'historial';
 type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
@@ -97,6 +98,11 @@ export function Admin() {
       {section === 'recargar-usuarios' && (
         <CreditBalanceAdminTable
           users={state.users}
+          investments={state.investments}
+          withdrawals={state.withdrawals}
+          referrals={state.referrals}
+          movements={state.movements}
+          recharges={state.recharges}
           query={query}
           setQuery={setQuery}
           page={page}
@@ -448,6 +454,11 @@ function GiftCodesAdminTable({ giftCodes, onSave }: { giftCodes: GiftCode[]; onS
 
 function CreditBalanceAdminTable({
   users,
+  investments,
+  withdrawals,
+  referrals,
+  movements,
+  recharges,
   query,
   setQuery,
   page,
@@ -457,6 +468,11 @@ function CreditBalanceAdminTable({
   onCredit
 }: {
   users: User[];
+  investments: Investment[];
+  withdrawals: WithdrawalRequest[];
+  referrals: Referral[];
+  movements: Movement[];
+  recharges: RechargeRequest[];
   query: string;
   setQuery: (value: string) => void;
   page: number;
@@ -479,6 +495,14 @@ function CreditBalanceAdminTable({
   }, [users, query]);
   const paged = paginate(filtered, page, pageSize);
   const selectedUser = users.find((user) => user.id === selectedUserId);
+  const balanceForUser = (userId: string) => availableBalance(
+    investments.filter((item) => item.userId === userId),
+    withdrawals.filter((item) => item.userId === userId),
+    referrals.filter((item) => item.userId === userId),
+    movements.filter((item) => item.userId === userId),
+    recharges.filter((item) => item.userId === userId)
+  );
+  const selectedBalance = selectedUser ? balanceForUser(selectedUser.id) : 0;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -512,10 +536,17 @@ function CreditBalanceAdminTable({
           <select className={inputClass} value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)} required>
             <option value="">Selecciona un usuario</option>
             {filtered.map((user) => (
-              <option key={user.id} value={user.id}>{user.name} · {user.email}</option>
+              <option key={user.id} value={user.id}>{user.name} · {user.email} · Balance {money(balanceForUser(user.id))}</option>
             ))}
           </select>
         </Field>
+        {selectedUser && (
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-green-700 p-4 text-white shadow-lg shadow-emerald-100">
+            <p className="text-xs font-black uppercase tracking-wide text-white/75">Balance disponible de {selectedUser.name}</p>
+            <p className="mt-2 text-3xl font-black">{money(selectedBalance)}</p>
+            <p className="mt-1 text-xs font-semibold text-white/80">{selectedUser.email}</p>
+          </div>
+        )}
         <Field label="Tipo de ajuste">
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setMode('credit')} className={`rounded-2xl px-4 py-3 text-sm font-black transition ${mode === 'credit' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-100' : 'border border-slate-100 bg-white text-slate-600'}`}>
@@ -549,7 +580,10 @@ function CreditBalanceAdminTable({
                 <p className="truncate font-bold text-slate-950">{user.name}</p>
                 <p className="truncate text-xs text-slate-500">{user.email}</p>
               </div>
-              <Badge tone={user.blocked ? 'danger' : 'ok'}>{user.blocked ? 'Bloqueado' : 'Activo'}</Badge>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-black text-emerald-700">{money(balanceForUser(user.id))}</p>
+                <Badge tone={user.blocked ? 'danger' : 'ok'}>{user.blocked ? 'Bloqueado' : 'Activo'}</Badge>
+              </div>
             </div>
           </button>
         ))}
