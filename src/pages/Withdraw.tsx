@@ -14,13 +14,14 @@ export function Withdraw() {
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
+  const recharges = state.recharges.filter((item) => item.userId === currentUser?.id);
   const userBankAccounts = currentUser?.bankMethods || [];
   const selectedAccount = userBankAccounts.find((account) => account.id === selectedAccountId) || userBankAccounts[0];
   const manualAccount = selectedAccountId === 'manual' || !selectedAccount;
   const hasApprovedRecharge = state.recharges.some((item) => item.userId === currentUser?.id && item.status === 'Aprobada');
   const hasPurchasedPlan = investments.length > 0;
   const hasWithdrawalToday = withdrawals.some((item) => isSameDominicanDate(item.createdAt, new Date()));
-  const balance = availableBalance(investments, withdrawals, referrals, movements);
+  const balance = availableBalance(investments, withdrawals, referrals, movements, recharges);
   const withdrawScheduleOpen = isWithdrawalScheduleOpen();
   const minimumWithdrawalAmount = 200;
   const withdrawalCommissionRate = 0.15;

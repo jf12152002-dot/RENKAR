@@ -23,6 +23,7 @@ export function Profile() {
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
+  const recharges = state.recharges.filter((item) => item.userId === currentUser?.id);
   const activePaymentAccounts = (state.paymentAccounts || []).filter((account) => account.active);
   const userBankAccounts = currentUser?.bankMethods || [];
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
@@ -131,7 +132,7 @@ export function Profile() {
         </div>
       </Card>
       <div className="grid grid-cols-2 gap-3">
-        <ProfileStat label="Balance total" value={money(availableBalance(investments, withdrawals, referrals, movements))} color="from-emerald-500 to-green-700" />
+        <ProfileStat label="Balance total" value={money(availableBalance(investments, withdrawals, referrals, movements, recharges))} color="from-emerald-500 to-green-700" />
         <ProfileStat label="Ganancias totales" value={money(accruedProfit(investments) + totalReferralBonus)} color="from-sky-500 to-blue-700" />
         <ProfileStat label="Total retirado" value={money(paidWithdrawals(withdrawals))} color="from-amber-400 to-orange-600" />
         <ProfileStat label="Referidos totales" value={String(referrals.length)} color="from-fuchsia-500 to-violet-700" />

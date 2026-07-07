@@ -1,4 +1,4 @@
-import { Investment, Movement, Referral, WithdrawalRequest } from '../types';
+import { Investment, Movement, RechargeRequest, Referral, WithdrawalRequest } from '../types';
 
 const dayMs = 86400000;
 
@@ -57,7 +57,12 @@ export function reservedWithdrawals(withdrawals: WithdrawalRequest[]) {
     .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
 }
 
-export function approvedDeposits(movements: Movement[] = []) {
+export function approvedDeposits(movements: Movement[] = [], recharges: RechargeRequest[] = []) {
+  if (recharges.length) {
+    return recharges
+      .filter((recharge) => recharge.status === 'Aprobada')
+      .reduce((sum, recharge) => sum + recharge.amount, 0);
+  }
   return movements
     .filter((movement) => movement.type === 'Deposito' && movement.status === 'Aprobada')
     .reduce((sum, movement) => sum + movement.amount, 0);
@@ -81,8 +86,14 @@ export function creditedReferralLineBonus(movements: Movement[] = []) {
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
-export function availableBalance(investments: Investment[], withdrawals: WithdrawalRequest[], referrals: Referral[], movements: Movement[] = []) {
-  return approvedDeposits(movements) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+export function availableBalance(
+  investments: Investment[],
+  withdrawals: WithdrawalRequest[],
+  referrals: Referral[],
+  movements: Movement[] = [],
+  recharges: RechargeRequest[] = []
+) {
+  return approvedDeposits(movements, recharges) + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

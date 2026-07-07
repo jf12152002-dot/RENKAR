@@ -11,7 +11,8 @@ export function Dashboard({ setTab }: { setTab: (tab: Tab) => void }) {
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
-  const balance = availableBalance(investments, withdrawals, referrals, movements);
+  const recharges = state.recharges.filter((item) => item.userId === currentUser?.id);
+  const balance = availableBalance(investments, withdrawals, referrals, movements, recharges);
   const activeInvestment = investments.reduce((sum, item) => sum + item.amount, 0);
   const totalReferralBonus = referralBonus(referrals) + creditedReferralLineBonus(movements);
   const totalProfit = accruedProfit(investments) + totalReferralBonus;

@@ -85,7 +85,8 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
   const withdrawals = state.withdrawals.filter((item) => item.userId === currentUser?.id);
   const referrals = state.referrals.filter((item) => item.userId === currentUser?.id);
   const movements = state.movements.filter((item) => item.userId === currentUser?.id);
-  const balance = availableBalance(investments, withdrawals, referrals, movements);
+  const recharges = state.recharges.filter((item) => item.userId === currentUser?.id);
+  const balance = availableBalance(investments, withdrawals, referrals, movements, recharges);
 
   useEffect(() => {
     if (!selectedAccountId && activeAccounts[0]) setSelectedAccountId(activeAccounts[0].id);

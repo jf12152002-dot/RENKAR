@@ -930,8 +930,8 @@ function availableBalanceForUser(state, userId) {
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
   const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
-  const approvedDeposits = movements
-    .filter((item) => item.type === 'Deposito' && item.status === 'Aprobada')
+  const approvedDeposits = state.recharges
+    .filter((item) => item.userId === userId && item.status === 'Aprobada')
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const planPurchases = movements
     .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
