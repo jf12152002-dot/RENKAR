@@ -17,13 +17,16 @@ export function daysSince(date: string) {
 }
 
 export function dailyProfitTotal(investments: Investment[]) {
-  return investments.filter((investment) => investment.active).reduce((sum, investment) => sum + investment.dailyProfit, 0);
+  return investments.filter((investment) => investment.active !== false).reduce((sum, investment) => sum + investment.dailyProfit, 0);
 }
 
 export function accruedProfit(investments: Investment[]) {
   return investments
-    .filter((investment) => investment.active)
-    .reduce((sum, investment) => sum + investment.dailyProfit * daysSince(investment.startedAt), 0);
+    .filter((investment) => investment.active !== false)
+    .reduce((sum, investment) => {
+      const completedDays = Math.min(daysSince(investment.startedAt), investment.durationDays || 30);
+      return sum + investment.dailyProfit * completedDays;
+    }, 0);
 }
 
 export function referralBonus(referrals: Referral[]) {
@@ -86,21 +89,26 @@ export function debitedPlanPurchases(movements: Movement[] = []) {
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
+function isCreditedStatus(status: string) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return normalized === 'acreditado' || normalized === 'acreditada';
+}
+
 export function creditedRegistrationBonus(movements: Movement[] = []) {
   return movements
-    .filter((movement) => ['Bono de registro', 'Bono por referidos'].includes(movement.type) && movement.status === 'Acreditado')
+    .filter((movement) => ['Bono de registro', 'Bono por referidos'].includes(movement.type) && isCreditedStatus(movement.status))
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
 export function creditedGiftBonus(movements: Movement[] = []) {
   return movements
-    .filter((movement) => movement.type === 'Bono de regalo' && movement.status === 'Acreditado')
+    .filter((movement) => movement.type === 'Bono de regalo' && isCreditedStatus(movement.status))
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
 export function creditedReferralLineBonus(movements: Movement[] = []) {
   return movements
-    .filter((movement) => movement.type === 'Bono por referidos' && movement.status === 'Acreditado' && movement.id.includes('-line-'))
+    .filter((movement) => movement.type === 'Bono por referidos' && isCreditedStatus(movement.status) && movement.id.includes('-line-'))
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
@@ -113,9 +121,10 @@ export function availableBalance(
 ) {
   const regularDeposits = recharges.length ? approvedRegularDeposits(recharges) : approvedDeposits(movements, recharges);
   const adminDeposits = approvedAdminDeposits(recharges);
+  const creditedBonuses = creditedRegistrationBonus(movements);
   const giftBonuses = creditedGiftBonus(movements);
-  const balanceBeforeAdminAdjustments = regularDeposits + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
-  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits + giftBonuses;
+  const balanceBeforeProtectedCredits = regularDeposits + accruedProfit(investments) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  return Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedBonuses + giftBonuses;
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

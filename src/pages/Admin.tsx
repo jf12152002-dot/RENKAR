@@ -467,6 +467,7 @@ function CreditBalanceAdminTable({
 }) {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [amount, setAmount] = useState('');
+  const [mode, setMode] = useState<'credit' | 'debit'>('credit');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const filtered = useMemo(() => {
@@ -485,23 +486,24 @@ function CreditBalanceAdminTable({
     setError('');
     const value = Number(amount);
     if (!selectedUserId) {
-      setError('Selecciona el usuario al que deseas recargar.');
+      setError('Selecciona el usuario al que deseas ajustar.');
       return;
     }
     if (!Number.isFinite(value) || value <= 0) {
-      setError('Ingresa un monto valido para recargar.');
+      setError('Ingresa un monto valido para ajustar.');
       return;
     }
-    await onCredit(selectedUserId, value);
-    setNotice(`Balance recargado correctamente a ${selectedUser?.name || 'usuario'} por ${money(value)}.`);
+    const signedAmount = mode === 'debit' ? -value : value;
+    await onCredit(selectedUserId, signedAmount);
+    setNotice(`${mode === 'debit' ? 'Balance descontado' : 'Balance recargado'} correctamente a ${selectedUser?.name || 'usuario'} por ${money(value)}.`);
     setAmount('');
   }
 
   return (
     <Card>
-      <SimpleToolbar title="Recargar balance de usuario" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar por nombre o telefono" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
+      <SimpleToolbar title="Ajustar balance de usuario" count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar por nombre o telefono" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
       <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
-        Esta accion acredita una recarga aprobada directamente al balance del usuario y queda registrada en su historial como deposito.
+        Esta accion permite agregar o quitar balance directamente al usuario y queda registrada en su historial como ajuste administrativo.
       </p>
       {notice && <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{notice}</p>}
       {error && <p className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
@@ -514,10 +516,20 @@ function CreditBalanceAdminTable({
             ))}
           </select>
         </Field>
-        <Field label="Monto a recargar">
+        <Field label="Tipo de ajuste">
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setMode('credit')} className={`rounded-2xl px-4 py-3 text-sm font-black transition ${mode === 'credit' ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-100' : 'border border-slate-100 bg-white text-slate-600'}`}>
+              Agregar saldo
+            </button>
+            <button type="button" onClick={() => setMode('debit')} className={`rounded-2xl px-4 py-3 text-sm font-black transition ${mode === 'debit' ? 'bg-rose-600 text-white shadow-lg shadow-rose-100' : 'border border-slate-100 bg-white text-slate-600'}`}>
+              Quitar saldo
+            </button>
+          </div>
+        </Field>
+        <Field label={mode === 'debit' ? 'Monto a quitar' : 'Monto a agregar'}>
           <input className={inputClass} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min="1" step="1" placeholder="Ej. 3500" required />
         </Field>
-        <Button className="w-full">Agregar balance</Button>
+        <Button className="w-full" variant={mode === 'debit' ? 'danger' : 'primary'}>{mode === 'debit' ? 'Quitar balance' : 'Agregar balance'}</Button>
       </form>
       <div className="mt-5 space-y-3">
         {paged.items.map((user) => (

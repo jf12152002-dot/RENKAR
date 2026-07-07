@@ -81,6 +81,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.currentUserId, state.users]
   );
 
+  useEffect(() => {
+    if (!state.currentUserId) return;
+    const refreshState = () => {
+      api
+        .state()
+        .then((nextState) => setState(normalizeClientState(nextState)))
+        .catch(() => {});
+    };
+    const interval = window.setInterval(refreshState, 60000);
+    window.addEventListener('focus', refreshState);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshState);
+    };
+  }, [state.currentUserId]);
+
   async function run(action: () => Promise<AppState>) {
     setError('');
     try {

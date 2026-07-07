@@ -45,6 +45,8 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
 const postgresAdvisoryLockId = 735527;
 let ensureDbPromise = null;
 let postgresWriteQueue = Promise.resolve();
+let lastGlobalDailyProfitSyncAt = 0;
+const globalDailyProfitSyncCooldownMs = 5 * 60 * 1000;
 
 app.use(cors({
   origin(origin, callback) {
@@ -937,11 +939,65 @@ function daysSince(date) {
   return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000));
 }
 
+function isCreditedStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return normalized === 'acreditado' || normalized === 'acreditada';
+}
+
+function accruedProfitForInvestment(investment) {
+  const completedDays = Math.min(daysSince(investment.startedAt), Number(investment.durationDays) || 30);
+  return Number(investment.dailyProfit) * completedDays;
+}
+
+function creditDailyProfitMovements(state, userId = null) {
+  let changed = false;
+  const users = new Set(userId ? [userId] : state.users.map((user) => user.id));
+  const existingMovementIds = new Set(state.movements.map((movement) => movement.id));
+
+  for (const investment of state.investments || []) {
+    if (!users.has(investment.userId) || investment.active === false) continue;
+    const startedAt = new Date(investment.startedAt).getTime();
+    if (!Number.isFinite(startedAt)) continue;
+    const completedDays = Math.min(daysSince(investment.startedAt), Number(investment.durationDays) || 30);
+    for (let day = 1; day <= completedDays; day += 1) {
+      const movementId = `mov-profit-${investment.id}-${day}`;
+      if (existingMovementIds.has(movementId)) continue;
+      state.movements.unshift({
+        id: movementId,
+        userId: investment.userId,
+        type: 'Ganancia diaria',
+        amount: Number(investment.dailyProfit) || 0,
+        status: 'Acreditada',
+        createdAt: new Date(startedAt + day * 86400000).toISOString()
+      });
+      existingMovementIds.add(movementId);
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+async function readDbWithDailyProfits(currentUserId = null) {
+  const state = await readDb(currentUserId);
+  if (!currentUserId) return state;
+  const currentUser = state.users.find((user) => user.id === currentUserId);
+  let profitUserId = currentUserId;
+  if (canManageSystem(currentUser)) {
+    const now = Date.now();
+    if (now - lastGlobalDailyProfitSyncAt < globalDailyProfitSyncCooldownMs) return state;
+    lastGlobalDailyProfitSyncAt = now;
+    profitUserId = null;
+  }
+  if (!creditDailyProfitMovements(state, profitUserId)) return state;
+  return writeDb(state, currentUserId);
+}
+
 function availableBalanceForUser(state, userId) {
-  const investments = state.investments.filter((item) => item.userId === userId && item.active);
+  const investments = state.investments.filter((item) => item.userId === userId && item.active !== false);
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
-  const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
+  const accrued = investments.reduce((sum, item) => sum + accruedProfitForInvestment(item), 0);
   const approvedRegularDeposits = state.recharges
     .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName !== 'Recarga administrativa')
     .reduce((sum, item) => sum + Number(item.amount), 0);
@@ -952,22 +1008,22 @@ function availableBalanceForUser(state, userId) {
     .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const creditedBonuses = movements
-    .filter((item) => ['Bono de registro', 'Bono por referidos'].includes(item.type) && item.status === 'Acreditado')
+    .filter((item) => ['Bono de registro', 'Bono por referidos'].includes(item.type) && isCreditedStatus(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const giftBonuses = movements
-    .filter((item) => item.type === 'Bono de regalo' && item.status === 'Acreditado')
+    .filter((item) => item.type === 'Bono de regalo' && isCreditedStatus(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeAdminAdjustments = approvedRegularDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
-  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits + giftBonuses;
+  const balanceBeforeProtectedCredits = approvedRegularDeposits + accrued + planPurchases - paidOrPendingWithdrawals;
+  return Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedBonuses + giftBonuses;
 }
 
 function withdrawableBalanceForUser(state, userId) {
-  const investments = state.investments.filter((item) => item.userId === userId && item.active);
+  const investments = state.investments.filter((item) => item.userId === userId && item.active !== false);
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
-  const accrued = investments.reduce((sum, item) => sum + Number(item.dailyProfit) * daysSince(item.startedAt), 0);
+  const accrued = investments.reduce((sum, item) => sum + accruedProfitForInvestment(item), 0);
   const reservedWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
@@ -1228,7 +1284,7 @@ app.post('/api/telegram/test-withdrawals', async (req, res) => {
 
 app.get('/api/state', async (req, res) => {
   const currentUserId = clientId(req);
-  const state = await readDb(currentUserId);
+  const state = await readDbWithDailyProfits(currentUserId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   res.json(clientState(state, currentUser?.blocked ? null : state.currentUserId));
 });
@@ -1264,7 +1320,7 @@ app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPr
     await writeDb(state, user.id);
   }
   if (user.blocked) return res.status(403).json({ message: 'Tu cuenta esta bloqueada. Contacta a administracion.' });
-  res.json(clientState(await readDb(user.id), user.id, { token: signToken(user.id) }));
+  res.json(clientState(await readDbWithDailyProfits(user.id), user.id, { token: signToken(user.id) }));
 });
 
 app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, keyPrefix: 'register' }), async (req, res) => {
@@ -1370,7 +1426,7 @@ app.post('/api/recharges', rateLimit({ windowMs: 60 * 60 * 1000, max: 12, keyPre
 
 app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyPrefix: 'plan-purchases' }), async (req, res) => {
   const currentUserId = clientId(req);
-  const state = await readDb();
+  const state = await readDbWithDailyProfits(currentUserId);
   const user = requireActiveUser(state, currentUserId, res);
   if (!user) return;
   if (!ensureSchedule(res, isWithinSchedule(9, 19), 'El horario para comprar planes es de 9:00 AM a 7:00 PM.')) return;
@@ -1423,7 +1479,7 @@ app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max:
 
 app.post('/api/withdrawals', rateLimit({ windowMs: 60 * 60 * 1000, max: 8, keyPrefix: 'withdrawals' }), async (req, res) => {
   const currentUserId = clientId(req);
-  const state = await readDb();
+  const state = await readDbWithDailyProfits(currentUserId);
   const user = requireActiveUser(state, currentUserId, res);
   if (!user) return;
   if (!ensureSchedule(res, isWithinSchedule(9, 17), 'Los retiros estan disponibles todos los dias de 9:00 AM a 5:00 PM.')) return;
@@ -1543,11 +1599,18 @@ app.patch('/api/recharges/:id', async (req, res) => {
     return res.status(400).json({ message: 'Estado de recarga invalido.' });
   }
   recharge.status = nextStatus;
-  state.movements = state.movements.map((item) =>
-    item.id === `mov-${recharge.id}` || (item.userId === recharge.userId && item.type === 'Deposito' && item.amount === Number(recharge.amount) && item.status === 'Pendiente de validacion')
-      ? { ...item, status: nextStatus }
-      : item
-  );
+  const exactMovementId = `mov-${recharge.id}`;
+  if (state.movements.some((item) => item.id === exactMovementId)) {
+    state.movements = state.movements.map((item) => item.id === exactMovementId ? { ...item, status: nextStatus } : item);
+  } else {
+    const legacyMovement = state.movements.find((item) =>
+      item.userId === recharge.userId
+      && item.type === 'Deposito'
+      && item.amount === Number(recharge.amount)
+      && item.status === 'Pendiente de validacion'
+    );
+    if (legacyMovement) legacyMovement.status = nextStatus;
+  }
   const nextState = await writeDb(state, currentUserId);
   await logAdminAction(state, currentUserId, nextStatus, 'recharge', recharge.id, { userId: recharge.userId, amount: recharge.amount });
   res.json(clientState(nextState, currentUserId));
@@ -1559,15 +1622,20 @@ app.post('/api/admin/credit-balance', async (req, res) => {
   const currentUser = requireActiveUser(state, currentUserId, res);
   if (!currentUser) return;
   if (!canManageRecharges(currentUser)) {
-    return res.status(403).json({ message: 'No tienes permiso para recargar balances.' });
+    return res.status(403).json({ message: 'No tienes permiso para ajustar balances.' });
   }
   const targetUser = state.users.find((user) => user.id === req.body.userId);
   if (!targetUser) return res.status(404).json({ message: 'Usuario no encontrado.' });
   const amount = Number(req.body.amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return res.status(400).json({ message: 'Ingresa un monto valido para recargar.' });
+  if (!Number.isFinite(amount) || amount === 0) {
+    return res.status(400).json({ message: 'Ingresa un monto valido para ajustar.' });
+  }
+  const currentBalance = availableBalanceForUser(state, targetUser.id);
+  if (amount < 0 && Math.abs(amount) > currentBalance) {
+    return res.status(400).json({ message: `No puedes quitar mas del balance disponible. Balance actual: ${formatMoney(currentBalance)}.` });
   }
   const now = new Date().toISOString();
+  const isDebit = amount < 0;
   const recharge = {
     id: uid('rec'),
     userId: targetUser.id,
@@ -1576,7 +1644,7 @@ app.post('/api/admin/credit-balance', async (req, res) => {
     referenceNumber: `ADMIN-${currentUserId.slice(0, 8)}`,
     amount,
     transferDate: now.slice(0, 10),
-    receiptName: 'Recarga manual desde admin',
+    receiptName: isDebit ? 'Descuento manual desde admin' : 'Recarga manual desde admin',
     receiptDataUrl: '',
     status: 'Aprobada',
     createdAt: now
@@ -1591,7 +1659,7 @@ app.post('/api/admin/credit-balance', async (req, res) => {
     createdAt: now
   });
   const nextState = await writeDb(state, currentUserId);
-  await logAdminAction(state, currentUserId, 'credit_balance', 'user', targetUser.id, { amount });
+  await logAdminAction(state, currentUserId, isDebit ? 'debit_balance' : 'credit_balance', 'user', targetUser.id, { amount });
   res.json(clientState(nextState, currentUserId));
 });
 
@@ -1610,11 +1678,18 @@ app.patch('/api/withdrawals/:id', async (req, res) => {
     return res.status(400).json({ message: 'Estado de retiro invalido.' });
   }
   withdrawal.status = nextStatus;
-  state.movements = state.movements.map((item) =>
-    item.id === `mov-${withdrawal.id}` || (item.userId === withdrawal.userId && item.type === 'Retiro' && item.amount === -Number(withdrawal.amount) && item.status === 'Pendiente')
-      ? { ...item, status: nextStatus }
-      : item
-  );
+  const exactMovementId = `mov-${withdrawal.id}`;
+  if (state.movements.some((item) => item.id === exactMovementId)) {
+    state.movements = state.movements.map((item) => item.id === exactMovementId ? { ...item, status: nextStatus } : item);
+  } else {
+    const legacyMovement = state.movements.find((item) =>
+      item.userId === withdrawal.userId
+      && item.type === 'Retiro'
+      && item.amount === -Number(withdrawal.amount)
+      && item.status === 'Pendiente'
+    );
+    if (legacyMovement) legacyMovement.status = nextStatus;
+  }
   const nextState = await writeDb(state, currentUserId);
   await logAdminAction(state, currentUserId, nextStatus, 'withdrawal', withdrawal.id, { userId: withdrawal.userId, amount: withdrawal.amount });
   res.json(clientState(nextState, currentUserId));

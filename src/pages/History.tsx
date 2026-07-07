@@ -1,21 +1,46 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { MovementType } from '../types';
+import { Movement, MovementType } from '../types';
 import { dateTime, money } from '../utils/format';
 import { Badge, Card } from '../components/ui';
 
 const filters: Array<MovementType | 'Todos'> = ['Todos', 'Deposito', 'Compra de plan', 'Ganancia diaria', 'Retiro', 'Bono por referidos', 'Bono de registro', 'Bono de regalo'];
+const dayMs = 86400000;
 
 export function History() {
   const { currentUser, state } = useApp();
   const [filter, setFilter] = useState<MovementType | 'Todos'>('Todos');
   const movements = useMemo(
-    () =>
-      state.movements
-        .filter((item) => item.userId === currentUser?.id)
+    () => {
+      const userMovements = state.movements
+        .filter((item) => item.userId === currentUser?.id);
+      const movementIds = new Set(userMovements.map((movement) => movement.id));
+      const missingDailyProfits: Movement[] = state.investments
+        .filter((investment) => investment.userId === currentUser?.id && investment.active !== false)
+        .flatMap((investment) => {
+          const startedAt = new Date(investment.startedAt).getTime();
+          if (!Number.isFinite(startedAt)) return [];
+          const completedDays = Math.min(Math.max(0, Math.floor((Date.now() - startedAt) / dayMs)), investment.durationDays || 30);
+          return Array.from({ length: completedDays }, (_, index): Movement | null => {
+            const day = index + 1;
+            const id = `mov-profit-${investment.id}-${day}`;
+            if (movementIds.has(id)) return null;
+            return {
+              id,
+              userId: investment.userId,
+              type: 'Ganancia diaria' as const,
+              amount: investment.dailyProfit,
+              status: 'Acreditada',
+              createdAt: new Date(startedAt + day * dayMs).toISOString()
+            };
+          }).filter((movement): movement is Movement => Boolean(movement));
+        });
+
+      return [...userMovements, ...missingDailyProfits]
         .filter((item) => filter === 'Todos' || item.type === filter)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [currentUser?.id, filter, state.movements]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+    [currentUser?.id, filter, state.investments, state.movements]
   );
 
   return (
