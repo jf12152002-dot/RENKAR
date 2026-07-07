@@ -42,6 +42,8 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const postgresAdvisoryLockId = 735527;
+let ensureDbPromise = null;
 let postgresWriteQueue = Promise.resolve();
 
 app.use(cors({
@@ -142,6 +144,23 @@ function verifyPassword(password, storedPassword) {
 
 async function ensureDb() {
   if (pool) {
+    if (!ensureDbPromise) {
+      ensureDbPromise = ensurePostgresDb().catch((error) => {
+        ensureDbPromise = null;
+        throw error;
+      });
+    }
+    return ensureDbPromise;
+  }
+  await fs.mkdir(dataDir, { recursive: true });
+  try {
+    await fs.access(dbPath);
+  } catch {
+    await fs.writeFile(dbPath, JSON.stringify(seedState, null, 2));
+  }
+}
+
+async function ensurePostgresDb() {
     await pool.query(`
       create table if not exists users (
         id text primary key,
@@ -269,15 +288,8 @@ async function ensureDb() {
       alter table gift_codes add column if not exists max_redemptions integer not null default 50;
     `);
     const count = await pool.query('select count(*)::int as count from users');
-    if (count.rows[0].count === 0) await persistStateToPostgres(seedState);
+    if (count.rows[0].count === 0) await persistStateToPostgresWithRetry(seedState);
     return;
-  }
-  await fs.mkdir(dataDir, { recursive: true });
-  try {
-    await fs.access(dbPath);
-  } catch {
-    await fs.writeFile(dbPath, JSON.stringify(seedState, null, 2));
-  }
 }
 
 async function readDb(currentUserId = null) {
@@ -310,14 +322,14 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function persistStateToPostgresWithRetry(state, maxAttempts = 4) {
+async function persistStateToPostgresWithRetry(state, maxAttempts = 8) {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       await persistStateToPostgres(state);
       return;
     } catch (error) {
       if (!isRetryablePostgresWriteError(error) || attempt === maxAttempts) throw error;
-      const delay = 150 * attempt;
+      const delay = 250 * attempt + Math.floor(Math.random() * 150);
       console.warn(`Postgres write retry ${attempt}/${maxAttempts} after ${error.code}: ${error.message}`);
       await wait(delay);
     }
@@ -458,7 +470,7 @@ async function persistStateToPostgres(state) {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    await client.query('select pg_advisory_xact_lock(735527)');
+    await client.query('select pg_advisory_xact_lock($1)', [postgresAdvisoryLockId]);
     await client.query('delete from support_messages');
     await client.query('delete from gift_redemptions');
     await client.query('delete from gift_codes');
@@ -940,13 +952,16 @@ function availableBalanceForUser(state, userId) {
     .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const creditedBonuses = movements
-    .filter((item) => ['Bono de registro', 'Bono de regalo', 'Bono por referidos'].includes(item.type) && item.status === 'Acreditado')
+    .filter((item) => ['Bono de registro', 'Bono por referidos'].includes(item.type) && item.status === 'Acreditado')
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  const giftBonuses = movements
+    .filter((item) => item.type === 'Bono de regalo' && item.status === 'Acreditado')
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const balanceBeforeAdminAdjustments = approvedRegularDeposits + accrued + creditedBonuses + planPurchases - paidOrPendingWithdrawals;
-  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits + giftBonuses;
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -961,11 +976,26 @@ function withdrawableBalanceForUser(state, userId) {
 
 async function logAdminAction(state, adminUserId, action, entityType, entityId, metadata = {}) {
   if (!pool) return;
-  await pool.query(
-    `insert into admin_logs (id, admin_user_id, action, entity_type, entity_id, metadata)
-     values ($1,$2,$3,$4,$5,$6::jsonb)`,
-    [uid('log'), adminUserId, action, entityType, entityId, JSON.stringify(metadata)]
-  );
+  const task = postgresWriteQueue.then(async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query('select pg_advisory_xact_lock($1)', [postgresAdvisoryLockId]);
+      await client.query(
+        `insert into admin_logs (id, admin_user_id, action, entity_type, entity_id, metadata)
+         values ($1,$2,$3,$4,$5,$6::jsonb)`,
+        [uid('log'), adminUserId, action, entityType, entityId, JSON.stringify(metadata)]
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+  postgresWriteQueue = task.catch(() => {});
+  await task;
 }
 
 async function writeJsonBackup() {

@@ -88,7 +88,13 @@ export function debitedPlanPurchases(movements: Movement[] = []) {
 
 export function creditedRegistrationBonus(movements: Movement[] = []) {
   return movements
-    .filter((movement) => ['Bono de registro', 'Bono de regalo', 'Bono por referidos'].includes(movement.type) && movement.status === 'Acreditado')
+    .filter((movement) => ['Bono de registro', 'Bono por referidos'].includes(movement.type) && movement.status === 'Acreditado')
+    .reduce((sum, movement) => sum + movement.amount, 0);
+}
+
+export function creditedGiftBonus(movements: Movement[] = []) {
+  return movements
+    .filter((movement) => movement.type === 'Bono de regalo' && movement.status === 'Acreditado')
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
@@ -107,8 +113,9 @@ export function availableBalance(
 ) {
   const regularDeposits = recharges.length ? approvedRegularDeposits(recharges) : approvedDeposits(movements, recharges);
   const adminDeposits = approvedAdminDeposits(recharges);
+  const giftBonuses = creditedGiftBonus(movements);
   const balanceBeforeAdminAdjustments = regularDeposits + accruedProfit(investments) + creditedRegistrationBonus(movements) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
-  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits + giftBonuses;
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {
