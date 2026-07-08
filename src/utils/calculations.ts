@@ -106,6 +106,12 @@ export function creditedGiftBonus(movements: Movement[] = []) {
     .reduce((sum, movement) => sum + movement.amount, 0);
 }
 
+export function creditedDailyProfit(movements: Movement[] = []) {
+  return movements
+    .filter((movement) => movement.type === 'Ganancia diaria' && isCreditedStatus(movement.status))
+    .reduce((sum, movement) => sum + movement.amount, 0);
+}
+
 export function creditedReferralLineBonus(movements: Movement[] = []) {
   return movements
     .filter((movement) => movement.type === 'Bono por referidos' && isCreditedStatus(movement.status) && movement.id.includes('-line-'))
@@ -123,12 +129,13 @@ export function availableBalance(
   const adminDeposits = approvedAdminDeposits(recharges);
   const creditedBonuses = creditedRegistrationBonus(movements);
   const giftBonuses = creditedGiftBonus(movements);
-  const balanceBeforeAdminAdjustments = regularDeposits + accruedProfit(investments) + creditedBonuses + giftBonuses + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  const dailyProfits = creditedDailyProfit(movements);
+  const balanceBeforeAdminAdjustments = regularDeposits + dailyProfits + creditedBonuses + giftBonuses + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
   return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
-export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {
-  return Math.max(0, accruedProfit(investments) - reservedWithdrawals(withdrawals));
+export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[], movements: Movement[] = []) {
+  return Math.max(0, creditedDailyProfit(movements) - reservedWithdrawals(withdrawals));
 }
 
 export function movementAmount(movement: Movement) {

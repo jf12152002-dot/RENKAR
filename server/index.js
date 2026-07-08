@@ -997,7 +997,6 @@ function availableBalanceForUser(state, userId) {
   const investments = state.investments.filter((item) => item.userId === userId && item.active !== false);
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
-  const accrued = investments.reduce((sum, item) => sum + accruedProfitForInvestment(item), 0);
   const approvedRegularDeposits = state.recharges
     .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName !== 'Recarga administrativa')
     .reduce((sum, item) => sum + Number(item.amount), 0);
@@ -1006,6 +1005,9 @@ function availableBalanceForUser(state, userId) {
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const planPurchases = movements
     .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  const creditedDailyProfits = movements
+    .filter((item) => item.type === 'Ganancia diaria' && isCreditedStatus(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
   const creditedBonuses = movements
     .filter((item) => ['Bono de registro', 'Bono por referidos'].includes(item.type) && isCreditedStatus(item.status))
@@ -1016,7 +1018,7 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeAdminAdjustments = approvedRegularDeposits + accrued + creditedBonuses + giftBonuses + planPurchases - paidOrPendingWithdrawals;
+  const balanceBeforeAdminAdjustments = approvedRegularDeposits + creditedDailyProfits + creditedBonuses + giftBonuses + planPurchases - paidOrPendingWithdrawals;
   return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
