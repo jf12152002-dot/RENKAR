@@ -123,8 +123,8 @@ export function availableBalance(
   const adminDeposits = approvedAdminDeposits(recharges);
   const creditedBonuses = creditedRegistrationBonus(movements);
   const giftBonuses = creditedGiftBonus(movements);
-  const balanceBeforeProtectedCredits = regularDeposits + accruedProfit(investments) + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
-  return Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedBonuses + giftBonuses;
+  const balanceBeforeAdminAdjustments = regularDeposits + accruedProfit(investments) + creditedBonuses + giftBonuses + debitedPlanPurchases(movements) - reservedWithdrawals(withdrawals);
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[]) {

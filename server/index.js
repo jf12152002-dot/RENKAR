@@ -1016,8 +1016,8 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeProtectedCredits = approvedRegularDeposits + accrued + planPurchases - paidOrPendingWithdrawals;
-  return Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedBonuses + giftBonuses;
+  const balanceBeforeAdminAdjustments = approvedRegularDeposits + accrued + creditedBonuses + giftBonuses + planPurchases - paidOrPendingWithdrawals;
+  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
 }
 
 function withdrawableBalanceForUser(state, userId) {
