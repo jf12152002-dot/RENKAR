@@ -271,8 +271,9 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
           const roi = dailyRoi(plan.dailyProfit, plan.amount);
           const visual = planVisualStyles[plan.id] || defaultPlanVisual;
           const hasBalance = balance >= plan.amount;
-          const purchasesCount = investments.filter((investment) => investment.planId === plan.id).length;
-          const reachedLimit = purchasesCount >= 2;
+          const purchasesCount = investments.filter((investment) => investment.planId === plan.id && investment.active !== false).length;
+          const purchaseLimit = Math.max(1, Number(currentUser?.planLimits?.[plan.id]) || 2);
+          const reachedLimit = purchasesCount >= purchaseLimit;
           const isBuying = buyingPlanId === plan.id;
           return (
             <Card key={plan.id} className={`relative overflow-hidden border-0 bg-gradient-to-br ${visual.panel} p-0 shadow-2xl ${visual.glow} transition hover:-translate-y-0.5`}>
@@ -294,7 +295,7 @@ export function Invest({ mode = 'plans' }: { mode?: InvestMode }) {
                 <div className="mt-5 space-y-3 rounded-[1.35rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-black uppercase tracking-wide text-slate-400">Compras permitidas</p>
-                    <p className={`text-sm font-black ${reachedLimit ? 'text-rose-600' : visual.text}`}>{Math.min(purchasesCount, 2)}/2</p>
+                    <p className={`text-sm font-black ${reachedLimit ? 'text-rose-600' : visual.text}`}>{purchasesCount}/{purchaseLimit}</p>
                   </div>
                   <div className="h-px bg-slate-100" />
                   <div className="flex items-center justify-between gap-3">

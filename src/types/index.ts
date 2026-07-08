@@ -14,6 +14,7 @@ export interface User {
   referralCode: string;
   referredBy?: string;
   bankMethods: UserBankAccount[];
+  planLimits?: Record<string, number>;
   blocked: boolean;
 }
 

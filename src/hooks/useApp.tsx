@@ -37,6 +37,7 @@ interface AppContextValue {
   updatePaymentAccounts: (paymentAccounts: PaymentAccount[]) => Promise<void>;
   updatePlans: (plans: InvestmentPlan[]) => Promise<void>;
   removeInvestment: (id: string) => Promise<void>;
+  activateInvestment: (userId: string, planId: string, planLimit: number, activate: boolean) => Promise<void>;
   updateGiftCodes: (giftCodes: GiftCode[]) => Promise<void>;
   redeemGiftCode: (code: string) => Promise<void>;
   sendChat: (text: string) => Promise<void>;
@@ -53,7 +54,12 @@ function normalizeClientState(state: AppState): AppState {
     giftCodes: Array.isArray(state.giftCodes)
       ? state.giftCodes.map((giftCode) => ({ ...giftCode, maxRedemptions: Math.max(1, Number(giftCode.maxRedemptions) || 50) }))
       : demoState.giftCodes,
-    users: Array.isArray(state.users) ? state.users.map((user) => ({ ...user, bankMethods: Array.isArray(user.bankMethods) ? user.bankMethods : [], blocked: user.blocked ?? false })) : demoState.users,
+    users: Array.isArray(state.users) ? state.users.map((user) => ({
+      ...user,
+      bankMethods: Array.isArray(user.bankMethods) ? user.bankMethods : [],
+      planLimits: user.planLimits && typeof user.planLimits === 'object' ? user.planLimits : {},
+      blocked: user.blocked ?? false
+    })) : demoState.users,
     investments: Array.isArray(state.investments) ? state.investments : [],
     recharges: Array.isArray(state.recharges) ? state.recharges : [],
     withdrawals: Array.isArray(state.withdrawals) ? state.withdrawals : [],
@@ -180,6 +186,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     async removeInvestment(id) {
       await run(() => api.removeInvestment(id));
+    },
+    async activateInvestment(userId, planId, planLimit, activate) {
+      await run(() => api.activateInvestment(userId, planId, planLimit, activate));
     },
     async updateGiftCodes(giftCodes) {
       await run(() => api.updateGiftCodes(giftCodes));

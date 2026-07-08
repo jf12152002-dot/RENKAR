@@ -11,6 +11,7 @@ create table if not exists users (
   referral_code text not null unique,
   referred_by text references users(id) on delete set null,
   bank_methods jsonb not null default '[]'::jsonb,
+  plan_limits jsonb not null default '{}'::jsonb,
   blocked boolean not null default false
 );
 

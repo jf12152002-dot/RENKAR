@@ -6,12 +6,12 @@ import { Badge, Button, Card, Field, inputClass } from '../components/ui';
 import { dateOnly, dateTime, money } from '../utils/format';
 import { availableBalance } from '../utils/calculations';
 
-type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'bonos' | 'cuentas' | 'usuarios' | 'quitar-planes' | 'inversiones' | 'referidos' | 'historial';
+type Section = 'recargas-pendientes' | 'recargas-procesadas' | 'recargar-usuarios' | 'retiros-pendientes' | 'retiros-procesados' | 'planes' | 'activar-planes' | 'bonos' | 'cuentas' | 'usuarios' | 'quitar-planes' | 'inversiones' | 'referidos' | 'historial';
 type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
 const pageSizeOptions = [25, 50, 100];
 
 export function Admin() {
-  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, removeInvestment, updateGiftCodes } = useApp();
+  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, removeInvestment, activateInvestment, updateGiftCodes } = useApp();
   const [section, setSection] = useState<Section>('recargas-pendientes');
   const [voucher, setVoucher] = useState<RechargeRequest | null>(null);
   const [query, setQuery] = useState('');
@@ -27,7 +27,7 @@ export function Admin() {
   const sections: Section[] = [
     ...(canRecharges ? ['recargas-pendientes', 'recargas-procesadas', 'recargar-usuarios'] as Section[] : []),
     ...(canWithdrawals ? ['retiros-pendientes', 'retiros-procesados'] as Section[] : []),
-    ...(canSystem ? ['planes', 'bonos', 'cuentas', 'usuarios', 'quitar-planes', 'inversiones', 'referidos', 'historial'] as Section[] : [])
+    ...(canSystem ? ['planes', 'activar-planes', 'bonos', 'cuentas', 'usuarios', 'quitar-planes', 'inversiones', 'referidos', 'historial'] as Section[] : [])
   ];
   const pendingRecharges = state.recharges.filter((item) => item.status === 'Pendiente de validacion').length;
   const pendingWithdrawals = state.withdrawals.filter((item) => item.status === 'Pendiente').length;
@@ -132,6 +132,15 @@ export function Admin() {
 
       {section === 'planes' && (
         <PlansAdminTable plans={state.plans} onSave={updatePlans} />
+      )}
+
+      {section === 'activar-planes' && (
+        <ActivatePlanAdmin
+          users={state.users}
+          plans={state.plans}
+          investments={state.investments}
+          onActivate={activateInvestment}
+        />
       )}
 
       {section === 'bonos' && (
@@ -773,6 +782,94 @@ function InvestmentsAdminTable({ title = 'Inversiones activas', description, ite
   );
 }
 
+function ActivatePlanAdmin({ users, plans, investments, onActivate }: {
+  users: User[];
+  plans: InvestmentPlan[];
+  investments: Investment[];
+  onActivate: (userId: string, planId: string, planLimit: number, activate: boolean) => Promise<void>;
+}) {
+  const eligibleUsers = users.filter((user) => user.role === 'user').sort((a, b) => a.name.localeCompare(b.name));
+  const [userId, setUserId] = useState('');
+  const [planId, setPlanId] = useState('');
+  const [planLimit, setPlanLimit] = useState(2);
+  const [activate, setActivate] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [formError, setFormError] = useState('');
+  const selectedUser = eligibleUsers.find((user) => user.id === userId);
+  const activeCount = investments.filter((investment) => investment.userId === userId && investment.planId === planId && investment.active !== false).length;
+
+  function selectUser(nextUserId: string) {
+    setUserId(nextUserId);
+    const user = eligibleUsers.find((item) => item.id === nextUserId);
+    setPlanLimit(Math.max(1, Number(user?.planLimits?.[planId]) || 2));
+  }
+
+  function selectPlan(nextPlanId: string) {
+    setPlanId(nextPlanId);
+    setPlanLimit(Math.max(1, Number(selectedUser?.planLimits?.[nextPlanId]) || 2));
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice('');
+    setFormError('');
+    setSaving(true);
+    try {
+      await onActivate(userId, planId, planLimit, activate);
+      setNotice(activate
+        ? 'Plan activado sin descontar balance. El nuevo limite tambien fue guardado.'
+        : 'Limite de compras actualizado correctamente.');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'No se pudo guardar el cambio.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="font-black">Activar plan a usuario</h2>
+      <p className="mt-1 text-sm text-slate-500">Activa un plan aunque el usuario haya alcanzado su limite o modifica cuantas veces puede comprarlo.</p>
+      {notice && <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{notice}</div>}
+      {formError && <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{formError}</div>}
+      <form className="mt-4 space-y-4" onSubmit={submit}>
+        <Field label="Usuario">
+          <select className={inputClass} value={userId} onChange={(event) => selectUser(event.target.value)} required>
+            <option value="">Selecciona un usuario</option>
+            {eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}
+          </select>
+        </Field>
+        <Field label="Plan">
+          <select className={inputClass} value={planId} onChange={(event) => selectPlan(event.target.value)} required>
+            <option value="">Selecciona un plan</option>
+            {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.amount)}</option>)}
+          </select>
+        </Field>
+        {userId && planId && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-slate-100 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Planes activos</p>
+              <p className="mt-1 text-xl font-black">{activeCount}</p>
+            </div>
+            <Field label="Limite permitido">
+              <input className={inputClass} type="number" min="1" max="100" value={planLimit} onChange={(event) => setPlanLimit(Number(event.target.value))} required />
+            </Field>
+          </div>
+        )}
+        <label className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+          <input className="h-5 w-5 accent-emerald-700" type="checkbox" checked={activate} onChange={(event) => setActivate(event.target.checked)} />
+          Activar una nueva unidad del plan ahora
+        </label>
+        <p className="text-xs text-slate-500">Si desmarcas la casilla, solamente cambiaras el limite. Una activacion administrativa no descuenta saldo ni genera bonos de referidos.</p>
+        <Button className="w-full" disabled={saving || !userId || !planId}>
+          {saving ? 'Guardando...' : activate ? 'Activar plan y guardar limite' : 'Guardar limite'}
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
 function ReferralsAdminTable({ items, query, setQuery, page, setPage, pageSize, setPageSize }: {
   items: Referral[];
   query: string;
@@ -1139,6 +1236,7 @@ function sectionLabel(section: Section) {
     'retiros-pendientes': 'Retiros pendientes',
     'retiros-procesados': 'Retiros procesados',
     planes: 'Planes',
+    'activar-planes': 'Activar planes',
     bonos: 'Bonos',
     cuentas: 'Cuentas',
     usuarios: 'Usuarios',

@@ -174,6 +174,7 @@ async function ensurePostgresDb() {
         referral_code text not null unique,
         referred_by text references users(id) on delete set null,
         bank_methods jsonb not null default '[]'::jsonb,
+        plan_limits jsonb not null default '{}'::jsonb,
         blocked boolean not null default false
       );
       create table if not exists plans (
@@ -287,6 +288,7 @@ async function ensurePostgresDb() {
     await pool.query(`
       alter table recharges alter column plan_id drop not null;
       alter table investments alter column recharge_id drop not null;
+      alter table users add column if not exists plan_limits jsonb not null default '{}'::jsonb;
       alter table gift_codes add column if not exists max_redemptions integer not null default 50;
     `);
     const count = await pool.query('select count(*)::int as count from users');
@@ -381,6 +383,7 @@ async function loadStateFromPostgres() {
       referralCode: row.referral_code,
       referredBy: row.referred_by || undefined,
       bankMethods: row.bank_methods || [],
+      planLimits: row.plan_limits || {},
       blocked: row.blocked
     })),
     plans: plansRows.rows.map((row) => ({
@@ -488,9 +491,9 @@ async function persistStateToPostgres(state) {
     for (const user of state.users || []) {
       const passwordHash = String(user.password || '').startsWith('scrypt:') ? user.password : hashPassword(user.password || '123456');
       await client.query(
-        `insert into users (id, name, email, password_hash, role, joined_at, referral_code, referred_by, bank_methods, blocked)
-         values ($1,$2,$3,$4,$5,$6,$7,null,$8::jsonb,$9)`,
-        [user.id, user.name, user.email, passwordHash, user.role, user.joinedAt, user.referralCode, JSON.stringify(user.bankMethods || []), Boolean(user.blocked)]
+        `insert into users (id, name, email, password_hash, role, joined_at, referral_code, referred_by, bank_methods, plan_limits, blocked)
+         values ($1,$2,$3,$4,$5,$6,$7,null,$8::jsonb,$9::jsonb,$10)`,
+        [user.id, user.name, user.email, passwordHash, user.role, user.joinedAt, user.referralCode, JSON.stringify(user.bankMethods || []), JSON.stringify(user.planLimits || {}), Boolean(user.blocked)]
       );
     }
     for (const user of state.users || []) {
@@ -1018,8 +1021,9 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeProtectedCredits = approvedRegularDeposits + creditedBonuses + giftBonuses + planPurchases;
-  return Math.max(0, Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedDailyProfits - paidOrPendingWithdrawals);
+  const balanceBeforeProtectedCredits = approvedRegularDeposits + planPurchases;
+  const protectedCredits = adminDeposits + creditedDailyProfits + creditedBonuses + giftBonuses;
+  return Math.max(0, Math.max(0, balanceBeforeProtectedCredits) + protectedCredits - paidOrPendingWithdrawals);
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -1438,8 +1442,9 @@ app.post('/api/investments/purchase', rateLimit({ windowMs: 60 * 60 * 1000, max:
   const plan = state.plans.find((item) => item.id === req.body.planId) || plans.find((item) => item.id === req.body.planId);
   if (!plan) return res.status(400).json({ message: 'Selecciona un plan valido.' });
   const purchasesCount = state.investments.filter((item) => item.userId === currentUserId && item.planId === plan.id && item.active !== false).length;
-  if (purchasesCount >= 2) {
-    return res.status(409).json({ message: 'Ya compraste este plan 2 veces. Selecciona otro plan disponible.' });
+  const purchaseLimit = Math.max(1, Number(user.planLimits?.[plan.id]) || 2);
+  if (purchasesCount >= purchaseLimit) {
+    return res.status(409).json({ message: `Ya alcanzaste el limite de ${purchaseLimit} compras para este plan.` });
   }
   const availableBalance = availableBalanceForUser(state, currentUserId);
   if (Number(plan.amount) > availableBalance) {
@@ -1858,6 +1863,59 @@ app.patch('/api/admin/investments/:id/remove', async (req, res) => {
     userId: investment.userId,
     amount: investment.amount,
     planId: investment.planId
+  });
+  res.json(clientState(nextState, currentUserId));
+});
+
+app.post('/api/admin/investments/activate', async (req, res) => {
+  const currentUserId = clientId(req);
+  const state = await readDbWithDailyProfits(currentUserId);
+  if (!requireActiveUser(state, currentUserId, res)) return;
+  const currentUser = state.users.find((user) => user.id === currentUserId);
+  if (!canManageSystem(currentUser)) {
+    return res.status(403).json({ message: 'Solo administracion puede activar planes manualmente.' });
+  }
+
+  const targetUser = state.users.find((user) => user.id === req.body.userId && user.role === 'user');
+  const plan = state.plans.find((item) => item.id === req.body.planId);
+  if (!targetUser) return res.status(404).json({ message: 'Usuario no encontrado.' });
+  if (!plan) return res.status(404).json({ message: 'Plan no encontrado.' });
+
+  const planLimit = Math.max(1, Math.min(100, Math.floor(Number(req.body.planLimit) || 2)));
+  targetUser.planLimits = { ...(targetUser.planLimits || {}), [plan.id]: planLimit };
+
+  const shouldActivate = req.body.activate !== false;
+  let investment = null;
+  if (shouldActivate) {
+    const now = new Date().toISOString();
+    investment = {
+      id: uid('inv-admin'),
+      userId: targetUser.id,
+      planId: plan.id,
+      amount: Number(plan.amount),
+      dailyProfit: Number(plan.dailyProfit),
+      durationDays: Number(plan.durationDays),
+      startedAt: now,
+      active: true,
+      rechargeId: null,
+      activatedByAdmin: true
+    };
+    state.investments.unshift(investment);
+    state.movements.unshift({
+      id: `mov-admin-${investment.id}`,
+      userId: targetUser.id,
+      type: 'Compra de plan',
+      amount: 0,
+      status: `Activado por administracion: ${plan.name}`,
+      createdAt: now
+    });
+  }
+
+  const nextState = await writeDb(state, currentUserId);
+  await logAdminAction(state, currentUserId, shouldActivate ? 'activate_investment' : 'update_plan_limit', 'user', targetUser.id, {
+    planId: plan.id,
+    planLimit,
+    investmentId: investment?.id || null
   });
   res.json(clientState(nextState, currentUserId));
 });
