@@ -18,7 +18,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   headers.set('Content-Type', 'application/json');
   const token = currentUserId();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers,
+    cache: path.startsWith('/api/') ? 'no-store' : options.cache
+  });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Error de servidor.' }));
     throw new Error(error.message || 'Error de servidor.');

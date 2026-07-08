@@ -89,11 +89,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .then((nextState) => setState(normalizeClientState(nextState)))
         .catch(() => {});
     };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshState();
+    };
     const interval = window.setInterval(refreshState, 60000);
     window.addEventListener('focus', refreshState);
+    window.addEventListener('pageshow', refreshState);
+    window.addEventListener('online', refreshState);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('focus', refreshState);
+      window.removeEventListener('pageshow', refreshState);
+      window.removeEventListener('online', refreshState);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [state.currentUserId]);
 

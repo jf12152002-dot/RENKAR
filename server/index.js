@@ -1285,6 +1285,9 @@ app.post('/api/telegram/test-withdrawals', async (req, res) => {
 });
 
 app.get('/api/state', async (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   const currentUserId = clientId(req);
   const state = await readDbWithDailyProfits(currentUserId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
@@ -1352,7 +1355,7 @@ app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, ke
   };
   state.users.push(user);
   state.movements.unshift({
-    id: `mov-${withdrawal.id}`,
+    id: uid('mov'),
     userId: user.id,
     type: 'Bono de registro',
     amount: 200,
