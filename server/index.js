@@ -1018,8 +1018,8 @@ function availableBalanceForUser(state, userId) {
   const paidOrPendingWithdrawals = withdrawals
     .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
     .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeAdminAdjustments = approvedRegularDeposits + creditedDailyProfits + creditedBonuses + giftBonuses + planPurchases - paidOrPendingWithdrawals;
-  return Math.max(0, balanceBeforeAdminAdjustments) + adminDeposits;
+  const balanceBeforeProtectedCredits = approvedRegularDeposits + creditedBonuses + giftBonuses + planPurchases;
+  return Math.max(0, Math.max(0, balanceBeforeProtectedCredits) + adminDeposits + creditedDailyProfits - paidOrPendingWithdrawals);
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -1352,7 +1352,7 @@ app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, ke
   };
   state.users.push(user);
   state.movements.unshift({
-    id: uid('mov'),
+    id: `mov-${withdrawal.id}`,
     userId: user.id,
     type: 'Bono de registro',
     amount: 200,
