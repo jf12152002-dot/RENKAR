@@ -997,33 +997,31 @@ async function readDbWithDailyProfits(currentUserId = null) {
 }
 
 function availableBalanceForUser(state, userId) {
-  const investments = state.investments.filter((item) => item.userId === userId && item.active !== false);
   const withdrawals = state.withdrawals.filter((item) => item.userId === userId);
   const movements = state.movements.filter((item) => item.userId === userId);
-  const approvedRegularDeposits = state.recharges
-    .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName !== 'Recarga administrativa')
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const adminDeposits = state.recharges
-    .filter((item) => item.userId === userId && item.status === 'Aprobada' && item.bankName === 'Recarga administrativa')
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const planPurchases = movements
-    .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const creditedDailyProfits = movements
-    .filter((item) => item.type === 'Ganancia diaria' && isCreditedStatus(item.status))
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const creditedBonuses = movements
-    .filter((item) => ['Bono de registro', 'Bono por referidos'].includes(item.type) && isCreditedStatus(item.status))
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const giftBonuses = movements
-    .filter((item) => item.type === 'Bono de regalo' && isCreditedStatus(item.status))
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const paidOrPendingWithdrawals = withdrawals
-    .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const balanceBeforeProtectedCredits = approvedRegularDeposits + planPurchases;
-  const protectedCredits = adminDeposits + creditedDailyProfits + creditedBonuses + giftBonuses;
-  return Math.max(0, Math.max(0, balanceBeforeProtectedCredits) + protectedCredits - paidOrPendingWithdrawals);
+  const registrationBonus = movements
+    .filter((item) => item.type === 'Bono de registro' && isCreditedStatus(item.status))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+  const events = [
+    ...state.recharges
+      .filter((item) => item.userId === userId && item.status === 'Aprobada')
+      .map((item) => ({ amount: Number(item.amount), createdAt: item.createdAt, priority: 1 })),
+    ...movements
+      .filter((item) => item.type === 'Compra de plan' && !String(item.status).includes('Rechaz'))
+      .map((item) => ({ amount: Number(item.amount), createdAt: item.createdAt, priority: 2 })),
+    ...movements
+      .filter((item) => ['Ganancia diaria', 'Bono por referidos', 'Bono de regalo'].includes(item.type) && isCreditedStatus(item.status))
+      .map((item) => ({ amount: Number(item.amount), createdAt: item.createdAt, priority: 1 })),
+    ...(registrationBonus ? [{ amount: Number(registrationBonus.amount), createdAt: registrationBonus.createdAt, priority: 1 }] : []),
+    ...withdrawals
+      .filter((item) => ['Pendiente', 'Aprobado', 'Pagado'].includes(item.status))
+      .map((item) => ({ amount: -Number(item.amount), createdAt: item.createdAt, priority: 3 }))
+  ].sort((a, b) => {
+    const timeDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return timeDifference || a.priority - b.priority;
+  });
+
+  return events.reduce((balance, event) => Math.max(0, balance + event.amount), 0);
 }
 
 function withdrawableBalanceForUser(state, userId) {
@@ -1916,6 +1914,76 @@ app.post('/api/admin/investments/activate', async (req, res) => {
     planId: plan.id,
     planLimit,
     investmentId: investment?.id || null
+  });
+  res.json(clientState(nextState, currentUserId));
+});
+
+app.patch('/api/admin/investments/:id', async (req, res) => {
+  const currentUserId = clientId(req);
+  const state = await readDbWithDailyProfits(currentUserId);
+  if (!requireActiveUser(state, currentUserId, res)) return;
+  const currentUser = state.users.find((user) => user.id === currentUserId);
+  if (!canManageSystem(currentUser)) {
+    return res.status(403).json({ message: 'Solo administracion puede editar planes comprados.' });
+  }
+
+  const investment = state.investments.find((item) => item.id === req.params.id);
+  const plan = state.plans.find((item) => item.id === req.body.planId);
+  if (!investment) return res.status(404).json({ message: 'Plan comprado no encontrado.' });
+  if (investment.active === false) return res.status(400).json({ message: 'No puedes editar un plan que fue quitado.' });
+  if (!plan) return res.status(400).json({ message: 'Selecciona un plan valido.' });
+
+  const startedAt = new Date(req.body.startedAt);
+  if (!Number.isFinite(startedAt.getTime())) {
+    return res.status(400).json({ message: 'Selecciona una fecha y hora validas.' });
+  }
+  if (startedAt.getTime() > Date.now() + 60000) {
+    return res.status(400).json({ message: 'La fecha de inicio no puede estar en el futuro.' });
+  }
+
+  const previousPlanId = investment.planId;
+  const previousAmount = Number(investment.amount) || 0;
+  const nextStartedAt = startedAt.toISOString();
+  const purchaseMovement = state.movements.find((movement) =>
+    movement.userId === investment.userId
+    && movement.type === 'Compra de plan'
+    && [`mov-purchase-${investment.id}`, `mov-${investment.id}`, `mov-admin-${investment.id}`].includes(movement.id)
+  );
+  const isAdministrativeActivation = purchaseMovement?.id === `mov-admin-${investment.id}`;
+
+  state.movements = state.movements.filter((movement) => !String(movement.id || '').startsWith(`mov-profit-${investment.id}-`));
+  investment.planId = plan.id;
+  investment.amount = Number(plan.amount);
+  investment.dailyProfit = Number(plan.dailyProfit);
+  investment.durationDays = Number(plan.durationDays);
+  investment.startedAt = nextStartedAt;
+
+  if (purchaseMovement) {
+    if (!isAdministrativeActivation) purchaseMovement.amount = -Number(plan.amount);
+    purchaseMovement.createdAt = nextStartedAt;
+    purchaseMovement.status = isAdministrativeActivation ? `Activado por administracion: ${plan.name}` : 'Activa';
+  }
+
+  const referralPercentByLevel = { 1: 15, 2: 3, 3: 2 };
+  for (const movement of state.movements) {
+    const match = String(movement.id || '').match(new RegExp(`^mov-ref-purchase-${investment.id}-line-(1|2|3)$`));
+    if (!match) continue;
+    movement.amount = Math.round(Number(plan.amount) * referralPercentByLevel[Number(match[1])] / 100);
+  }
+
+  const investmentUser = state.users.find((user) => user.id === investment.userId);
+  if (investmentUser?.referredBy && previousAmount !== Number(plan.amount)) {
+    const referral = state.referrals.find((item) => item.userId === investmentUser.referredBy && item.name === investmentUser.name);
+    if (referral) referral.investedAmount = Math.max(0, Number(referral.investedAmount || 0) - previousAmount + Number(plan.amount));
+  }
+
+  creditDailyProfitMovements(state, investment.userId);
+  const nextState = await writeDb(state, currentUserId);
+  await logAdminAction(state, currentUserId, 'update_investment', 'investment', investment.id, {
+    userId: investment.userId,
+    previousPlanId,
+    planId: plan.id,
+    startedAt: nextStartedAt
   });
   res.json(clientState(nextState, currentUserId));
 });

@@ -125,14 +125,29 @@ export function availableBalance(
   movements: Movement[] = [],
   recharges: RechargeRequest[] = []
 ) {
-  const regularDeposits = recharges.length ? approvedRegularDeposits(recharges) : approvedDeposits(movements, recharges);
-  const adminDeposits = approvedAdminDeposits(recharges);
-  const creditedBonuses = creditedRegistrationBonus(movements);
-  const giftBonuses = creditedGiftBonus(movements);
-  const dailyProfits = creditedDailyProfit(movements);
-  const balanceBeforeProtectedCredits = regularDeposits + debitedPlanPurchases(movements);
-  const protectedCredits = adminDeposits + dailyProfits + creditedBonuses + giftBonuses;
-  return Math.max(0, Math.max(0, balanceBeforeProtectedCredits) + protectedCredits - reservedWithdrawals(withdrawals));
+  const registrationBonus = movements
+    .filter((movement) => movement.type === 'Bono de registro' && isCreditedStatus(movement.status))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+  const events: Array<{ amount: number; createdAt: string; priority: number }> = [
+    ...recharges
+      .filter((recharge) => recharge.status === 'Aprobada')
+      .map((recharge) => ({ amount: recharge.amount, createdAt: recharge.createdAt, priority: 1 })),
+    ...movements
+      .filter((movement) => movement.type === 'Compra de plan' && !movement.status.includes('Rechaz'))
+      .map((movement) => ({ amount: movement.amount, createdAt: movement.createdAt, priority: 2 })),
+    ...movements
+      .filter((movement) => ['Ganancia diaria', 'Bono por referidos', 'Bono de regalo'].includes(movement.type) && isCreditedStatus(movement.status))
+      .map((movement) => ({ amount: movement.amount, createdAt: movement.createdAt, priority: 1 })),
+    ...(registrationBonus ? [{ amount: registrationBonus.amount, createdAt: registrationBonus.createdAt, priority: 1 }] : []),
+    ...withdrawals
+      .filter((withdrawal) => ['Pendiente', 'Aprobado', 'Pagado'].includes(withdrawal.status))
+      .map((withdrawal) => ({ amount: -withdrawal.amount, createdAt: withdrawal.createdAt, priority: 3 }))
+  ].sort((a, b) => {
+    const timeDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return timeDifference || a.priority - b.priority;
+  });
+
+  return events.reduce((balance, event) => Math.max(0, balance + event.amount), 0);
 }
 
 export function withdrawableBalance(investments: Investment[], withdrawals: WithdrawalRequest[], movements: Movement[] = []) {

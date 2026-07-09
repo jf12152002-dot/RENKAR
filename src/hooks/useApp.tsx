@@ -38,6 +38,7 @@ interface AppContextValue {
   updatePlans: (plans: InvestmentPlan[]) => Promise<void>;
   removeInvestment: (id: string) => Promise<void>;
   activateInvestment: (userId: string, planId: string, planLimit: number, activate: boolean) => Promise<void>;
+  updateInvestment: (id: string, planId: string, startedAt: string) => Promise<void>;
   updateGiftCodes: (giftCodes: GiftCode[]) => Promise<void>;
   redeemGiftCode: (code: string) => Promise<void>;
   sendChat: (text: string) => Promise<void>;
@@ -189,6 +190,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     async activateInvestment(userId, planId, planLimit, activate) {
       await run(() => api.activateInvestment(userId, planId, planLimit, activate));
+    },
+    async updateInvestment(id, planId, startedAt) {
+      await run(() => api.updateInvestment(id, planId, startedAt));
     },
     async updateGiftCodes(giftCodes) {
       await run(() => api.updateGiftCodes(giftCodes));

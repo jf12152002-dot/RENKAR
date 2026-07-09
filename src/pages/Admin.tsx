@@ -11,7 +11,7 @@ type StatusFilter = 'Todos' | RechargeStatus | WithdrawalStatus;
 const pageSizeOptions = [25, 50, 100];
 
 export function Admin() {
-  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, removeInvestment, activateInvestment, updateGiftCodes } = useApp();
+  const { state, currentUser, updateRecharge, adminCreditBalance, updateWithdrawal, updatePaymentAccounts, updateUserBlock, updateUserPassword, updatePlans, removeInvestment, activateInvestment, updateInvestment, updateGiftCodes } = useApp();
   const [section, setSection] = useState<Section>('recargas-pendientes');
   const [voucher, setVoucher] = useState<RechargeRequest | null>(null);
   const [query, setQuery] = useState('');
@@ -213,7 +213,7 @@ export function Admin() {
           onRemove={removeInvestment}
         />
       )}
-      {section === 'inversiones' && <InvestmentsAdminTable items={state.investments} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} userName={userName} />}
+      {section === 'inversiones' && <InvestmentsAdminTable items={state.investments} plans={state.plans} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} userName={userName} onEdit={updateInvestment} />}
       {section === 'referidos' && <ReferralsAdminTable items={state.referrals} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} />}
       {section === 'historial' && <MovementsAdminTable items={state.movements} query={query} setQuery={setQuery} page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} userName={userName} />}
       {voucher && (
@@ -705,10 +705,11 @@ function UsersAdminTable({
   );
 }
 
-function InvestmentsAdminTable({ title = 'Inversiones activas', description, items, query, setQuery, page, setPage, pageSize, setPageSize, userName, onRemove }: {
+function InvestmentsAdminTable({ title = 'Inversiones activas', description, items, plans = [], query, setQuery, page, setPage, pageSize, setPageSize, userName, onRemove, onEdit }: {
   title?: string;
   description?: string;
   items: Investment[];
+  plans?: InvestmentPlan[];
   query: string;
   setQuery: (value: string) => void;
   page: number;
@@ -717,8 +718,11 @@ function InvestmentsAdminTable({ title = 'Inversiones activas', description, ite
   setPageSize: (value: number) => void;
   userName: (id: string) => string;
   onRemove?: (id: string) => Promise<void>;
+  onEdit?: (id: string, planId: string, startedAt: string) => Promise<void>;
 }) {
   const [removingId, setRemovingId] = useState('');
+  const [editingId, setEditingId] = useState('');
+  const [savingId, setSavingId] = useState('');
   const [notice, setNotice] = useState('');
   const [removeError, setRemoveError] = useState('');
   const filtered = useMemo(() => {
@@ -746,6 +750,32 @@ function InvestmentsAdminTable({ title = 'Inversiones activas', description, ite
     }
   }
 
+  function localDateTimeValue(value: string) {
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  }
+
+  async function editPlan(event: FormEvent<HTMLFormElement>, inv: Investment) {
+    event.preventDefault();
+    if (!onEdit) return;
+    const data = new FormData(event.currentTarget);
+    const planId = String(data.get('planId') || '');
+    const localStartedAt = String(data.get('startedAt') || '');
+    setNotice('');
+    setRemoveError('');
+    setSavingId(inv.id);
+    try {
+      await onEdit(inv.id, planId, new Date(localStartedAt).toISOString());
+      setEditingId('');
+      setNotice('Plan, fecha y hora actualizados. Las ganancias diarias fueron recalculadas.');
+    } catch (error) {
+      setRemoveError(error instanceof Error ? error.message : 'No se pudo editar el plan.');
+    } finally {
+      setSavingId('');
+    }
+  }
+
   return (
     <Card>
       <SimpleToolbar title={title} count={filtered.length} query={query} setQuery={setQuery} placeholder="Buscar usuario, monto, ganancia o fecha" pageSize={pageSize} setPageSize={(value) => { setPageSize(value); setPage(1); }} />
@@ -762,6 +792,29 @@ function InvestmentsAdminTable({ title = 'Inversiones activas', description, ite
               </div>
               <Badge tone={inv.active === false ? 'danger' : 'ok'}>{inv.active === false ? 'Quitado' : 'Activo'}</Badge>
             </div>
+            {onEdit && inv.active !== false && (
+              editingId === inv.id ? (
+                <form className="mt-3 space-y-3 rounded-2xl border border-blue-100 bg-white p-3" onSubmit={(event) => void editPlan(event, inv)}>
+                  <Field label="Plan elegido">
+                    <select className={inputClass} name="planId" defaultValue={inv.planId} required>
+                      {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.amount)} · {money(plan.dailyProfit)}/dia</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Fecha y hora de inicio">
+                    <input className={inputClass} name="startedAt" type="datetime-local" max={localDateTimeValue(new Date().toISOString())} defaultValue={localDateTimeValue(inv.startedAt)} required />
+                  </Field>
+                  <p className="text-xs text-amber-700">Cambiar estos datos recalcula el costo, las ganancias diarias y los bonos por lineas asociados a esta compra.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button disabled={savingId === inv.id}>{savingId === inv.id ? 'Guardando...' : 'Guardar cambios'}</Button>
+                    <Button type="button" variant="ghost" onClick={() => setEditingId('')}>Cancelar</Button>
+                  </div>
+                </form>
+              ) : (
+                <Button type="button" variant="ghost" className="mt-3 w-full" onClick={() => setEditingId(inv.id)}>
+                  Editar plan, fecha y hora
+                </Button>
+              )
+            )}
             {onRemove && (
               <Button
                 type="button"

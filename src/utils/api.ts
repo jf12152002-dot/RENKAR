@@ -132,6 +132,12 @@ export const api = {
       body: JSON.stringify({ userId, planId, planLimit, activate, currentUserId: currentUserId() })
     });
   },
+  updateInvestment(id: string, planId: string, startedAt: string) {
+    return request<AppState>(`/api/admin/investments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ planId, startedAt, currentUserId: currentUserId() })
+    });
+  },
   updateGiftCodes(giftCodes: GiftCode[]) {
     return request<AppState>('/api/admin/gift-codes', {
       method: 'PATCH',
